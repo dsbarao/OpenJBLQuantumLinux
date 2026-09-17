@@ -18,6 +18,8 @@ pub struct RuntimeState {
     pub microphone: Option<String>,
     pub lighting_enabled: Option<bool>,
     pub lighting_color: Option<String>,
+    pub logo_color: Option<String>,
+    pub ring_color: Option<String>,
     pub battery_percent: Option<u8>,
     pub charging: Option<bool>,
     pub game_chat_value: Option<u8>,
@@ -141,10 +143,31 @@ pub fn update_control(feature: &str, value: &str) -> Result<(), String> {
         "color" => {
             state.lighting_enabled = Some(true);
             state.lighting_color = Some(value.into());
+            state.logo_color = Some(value.into());
+            state.ring_color = Some(value.into());
+        }
+        "logo-color" => {
+            state.lighting_enabled = Some(true);
+            state.lighting_color = None;
+            state.logo_color = Some(value.into());
+        }
+        "ring-color" => {
+            state.lighting_enabled = Some(true);
+            state.lighting_color = None;
+            state.ring_color = Some(value.into());
         }
         "sidetone" => state.sidetone_level = Some(value.into()),
         _ => return Err(format!("unsupported cached control: {feature}")),
     }
+    save(&mut state)
+}
+
+pub fn update_lighting_colors(logo: &str, ring: &str) -> Result<(), String> {
+    let mut state = load().unwrap_or_default();
+    state.lighting_enabled = Some(true);
+    state.logo_color = Some(logo.into());
+    state.ring_color = Some(ring.into());
+    state.lighting_color = (logo == ring).then(|| logo.into());
     save(&mut state)
 }
 

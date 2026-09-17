@@ -78,3 +78,8 @@ changes one segment in isolation. The allowlisted presets are blue (`#0029ff`),
 cyan (`#33ffcc`), magenta (`#ff00cc`), red (`#ff2020`), green (`#20ff66`), and
 white (`#ffffff`). The last three use the confirmed literal RGB fields but are
 OpenJBLQuantum convenience presets rather than captured vendor defaults.
+
+The widget can target both zones, Logo only, or Ring only. Even for an
+independent change, OpenJBLQuantum reconstructs and sends both complete zone
+profiles from its confirmed cache. If the other zone is unknown, it refuses
+the operation and requires a synchronized preset first rather than guessing.

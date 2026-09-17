@@ -196,6 +196,8 @@ struct StatusOutput {
     microphone: Option<String>,
     lighting_enabled: Option<bool>,
     lighting_color: Option<String>,
+    logo_color: Option<String>,
+    ring_color: Option<String>,
     game_chat_value: Option<u8>,
     bluetooth: Option<String>,
     sidetone_level: Option<String>,
@@ -794,23 +796,40 @@ fn set_feature_report_allowlisted(node: &Path, report: &[u8]) -> Result<(), Stri
     Ok(())
 }
 
-fn solid_color_profile(red: u8, green: u8, blue: u8) -> Vec<Vec<u8>> {
-    let mut reports = Vec::with_capacity(13);
-    for zone in 0..=1 {
-        reports.push(vec![0x4c, zone, 0x64, 0x05]);
-        for segment in 0..5 {
-            reports.push(vec![
-                0x4d,
-                zone,
-                segment,
-                red,
-                green,
-                blue,
-                0x01,
-                segment * 2,
-            ]);
-        }
+fn preset_rgb(value: &str) -> Option<(u8, u8, u8)> {
+    match value {
+        "blue" => Some((0x00, 0x29, 0xff)),
+        "cyan" => Some((0x33, 0xff, 0xcc)),
+        "magenta" => Some((0xff, 0x00, 0xcc)),
+        "red" => Some((0xff, 0x20, 0x20)),
+        "green" => Some((0x20, 0xff, 0x66)),
+        "white" => Some((0xff, 0xff, 0xff)),
+        _ => None,
     }
+}
+
+fn solid_zone_profile(zone: u8, color: (u8, u8, u8)) -> Vec<Vec<u8>> {
+    let (red, green, blue) = color;
+    let mut reports = Vec::with_capacity(6);
+    reports.push(vec![0x4c, zone, 0x64, 0x05]);
+    for segment in 0..5 {
+        reports.push(vec![
+            0x4d,
+            zone,
+            segment,
+            red,
+            green,
+            blue,
+            0x01,
+            segment * 2,
+        ]);
+    }
+    reports
+}
+
+fn solid_color_profile(logo: (u8, u8, u8), ring: (u8, u8, u8)) -> Vec<Vec<u8>> {
+    let mut reports = solid_zone_profile(0, logo);
+    reports.extend(solid_zone_profile(1, ring));
     reports.push(vec![0x4b, 0x01]);
     reports
 }
@@ -848,19 +867,40 @@ fn parse_set_command(mut args: impl Iterator<Item = String>) -> Result<SetComman
             reports: vec![vec![0x4b, 0x01]],
         },
         ("color", value @ ("blue" | "cyan" | "magenta" | "red" | "green" | "white")) => {
-            let (red, green, blue, preset) = match value {
-                "blue" => (0x00, 0x29, 0xff, "blue"),
-                "cyan" => (0x33, 0xff, 0xcc, "cyan"),
-                "magenta" => (0xff, 0x00, 0xcc, "magenta"),
-                "red" => (0xff, 0x20, 0x20, "red"),
-                "green" => (0x20, 0xff, 0x66, "green"),
-                "white" => (0xff, 0xff, 0xff, "white"),
+            let preset = match value {
+                "blue" => "blue",
+                "cyan" => "cyan",
+                "magenta" => "magenta",
+                "red" => "red",
+                "green" => "green",
+                "white" => "white",
                 _ => unreachable!(),
             };
+            let rgb = preset_rgb(preset).expect("allowlisted preset");
             SetCommand {
                 feature: "color",
                 value: preset,
-                reports: solid_color_profile(red, green, blue),
+                reports: solid_color_profile(rgb, rgb),
+            }
+        }
+        (feature @ ("logo-color" | "ring-color"), value) if preset_rgb(value).is_some() => {
+            let preset = match value {
+                "blue" => "blue",
+                "cyan" => "cyan",
+                "magenta" => "magenta",
+                "red" => "red",
+                "green" => "green",
+                "white" => "white",
+                _ => unreachable!(),
+            };
+            SetCommand {
+                feature: if feature == "logo-color" {
+                    "logo-color"
+                } else {
+                    "ring-color"
+                },
+                value: preset,
+                reports: Vec::new(),
             }
         }
         ("sidetone", "off") => SetCommand {
@@ -892,10 +932,41 @@ fn set_control(command: SetCommand) -> Result<bool, String> {
     let Some(node) = quantum_hidraw_node()? else {
         return Ok(false);
     };
-    for report in &command.reports {
+    let mut resolved_zone_colors = None;
+    let reports = if matches!(command.feature, "logo-color" | "ring-color") {
+        let cached = state::load().unwrap_or_default();
+        let legacy = cached.lighting_color.as_deref();
+        let logo = if command.feature == "logo-color" {
+            command.value
+        } else {
+            cached.logo_color.as_deref().or(legacy).ok_or(
+                "logo color is unknown; apply a synchronized color before separating zones",
+            )?
+        };
+        let ring = if command.feature == "ring-color" {
+            command.value
+        } else {
+            cached.ring_color.as_deref().or(legacy).ok_or(
+                "ring color is unknown; apply a synchronized color before separating zones",
+            )?
+        };
+        let reports = solid_color_profile(
+            preset_rgb(logo).ok_or("cached logo color is unsupported")?,
+            preset_rgb(ring).ok_or("cached ring color is unsupported")?,
+        );
+        resolved_zone_colors = Some((logo.to_owned(), ring.to_owned()));
+        reports
+    } else {
+        command.reports.clone()
+    };
+    for report in &reports {
         set_feature_report_allowlisted(&node, report)?;
     }
-    state::update_control(command.feature, command.value)?;
+    if let Some((logo, ring)) = resolved_zone_colors {
+        state::update_lighting_colors(&logo, &ring)?;
+    } else {
+        state::update_control(command.feature, command.value)?;
+    }
     println!("{} set to {}", command.feature, command.value);
     Ok(true)
 }
@@ -977,6 +1048,8 @@ fn status(options: StatusOptions) -> Result<bool, String> {
                 microphone: None,
                 lighting_enabled: None,
                 lighting_color: None,
+                logo_color: None,
+                ring_color: None,
                 game_chat_value: None,
                 bluetooth: None,
                 sidetone_level: None,
@@ -1009,6 +1082,8 @@ fn status(options: StatusOptions) -> Result<bool, String> {
             microphone: cached.microphone,
             lighting_enabled: cached.lighting_enabled,
             lighting_color: cached.lighting_color,
+            logo_color: cached.logo_color,
+            ring_color: cached.ring_color,
             game_chat_value: cached.game_chat_value,
             bluetooth: cached.bluetooth,
             sidetone_level: cached.sidetone_level,
@@ -1078,7 +1153,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|logo-color|ring-color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("set permits only confirmed two-byte Feature Reports from the built-in allowlist");
 }
@@ -1198,6 +1273,13 @@ mod tests {
             vec![0x4d, 0x00, 0x00, 0x33, 0xff, 0xcc, 0x01, 0x00]
         );
         assert_eq!(color.reports[12], vec![0x4b, 0x01]);
+        assert!(parse(&["logo-color", "blue"]).unwrap().reports.is_empty());
+        assert!(
+            parse(&["ring-color", "magenta"])
+                .unwrap()
+                .reports
+                .is_empty()
+        );
         assert!(parse(&["color", "112233"]).is_err());
         assert!(parse(&["raw", "46ff"]).is_err());
         assert!(parse(&["ambient", "invalid"]).is_err());
@@ -1237,6 +1319,8 @@ mod tests {
             microphone: Some("active".into()),
             lighting_enabled: Some(true),
             lighting_color: Some("cyan".into()),
+            logo_color: Some("cyan".into()),
+            ring_color: Some("cyan".into()),
             game_chat_value: Some(8),
             bluetooth: Some("connected".into()),
             sidetone_level: Some("low".into()),

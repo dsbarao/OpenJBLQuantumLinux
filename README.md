@@ -196,7 +196,8 @@ Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
 allowlisted `openjblquantum` commands. Its popup includes expandable controls
 for ambient mode (off/ANC/TalkThru), global lighting (on/off), six solid-color
-presets applied to the complete Logo and Ring profiles, and hardware sidetone
+presets applied together or independently to the complete Logo and Ring
+profiles, and hardware sidetone
 (off/low/medium/high). These controls send only confirmed Feature Reports
 documented under `docs/protocol/`; arbitrary reports and arbitrary RGB values
 are rejected by the CLI parser.

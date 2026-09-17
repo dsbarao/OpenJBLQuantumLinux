@@ -25,6 +25,9 @@ PlasmoidItem {
     property string sidetoneLevel: "unknown"
     property var lightingEnabled: null
     property string lightingColor: "unknown"
+    property string logoColor: "unknown"
+    property string ringColor: "unknown"
+    property string lightingTarget: "both"
     property int gameChatValue: -1
     property bool controlBusy: false
     readonly property var lightingPresets: [
@@ -84,6 +87,18 @@ PlasmoidItem {
         return "Aguardando estado"
     }
 
+    function selectedLightingColor() {
+        if (lightingTarget === "logo") return logoColor
+        if (lightingTarget === "ring") return ringColor
+        return lightingColor
+    }
+
+    function lightingFeature() {
+        if (lightingTarget === "logo") return "logo-color"
+        if (lightingTarget === "ring") return "ring-color"
+        return "color"
+    }
+
     function friendlyError(message) {
         const normalized = message.toLowerCase()
         if (normalized.includes("not found") || normalized.includes("não encontrado"))
@@ -123,6 +138,8 @@ PlasmoidItem {
             sidetoneLevel = String(result.sidetone_level ?? "unknown")
             lightingEnabled = result.lighting_enabled ?? null
             lightingColor = String(result.lighting_color ?? "unknown")
+            logoColor = String(result.logo_color ?? result.lighting_color ?? "unknown")
+            ringColor = String(result.ring_color ?? result.lighting_color ?? "unknown")
             gameChatValue = result.game_chat_value === null ? -1 : Number(result.game_chat_value)
             errorMessage = ""
         } catch (error) {
@@ -211,9 +228,9 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 27
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 30
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 27
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 30
         spacing: Kirigami.Units.smallSpacing
 
         Image {
@@ -415,8 +432,33 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
-                    text: "Cor sólida · logotipo e anel"
+                    text: "Cor sólida"
                     opacity: 0.7
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "lighting"
+                    enabled: root.deviceAvailable && !root.controlBusy
+
+                    PlasmaComponents.Button {
+                        text: "Ambos"
+                        checkable: true
+                        checked: root.lightingTarget === "both"
+                        onClicked: root.lightingTarget = "both"
+                    }
+                    PlasmaComponents.Button {
+                        text: "Logotipo"
+                        checkable: true
+                        checked: root.lightingTarget === "logo"
+                        onClicked: root.lightingTarget = "logo"
+                    }
+                    PlasmaComponents.Button {
+                        text: "Anel / fundo"
+                        checkable: true
+                        checked: root.lightingTarget === "ring"
+                        onClicked: root.lightingTarget = "ring"
+                    }
                 }
 
                 RowLayout {
@@ -434,15 +476,15 @@ PlasmoidItem {
                             Layout.preferredHeight: 28
                             radius: Kirigami.Units.cornerRadius
                             color: modelData.color
-                            border.width: root.lightingColor === modelData.key ? 3 : 1
-                            border.color: root.lightingColor === modelData.key
+                            border.width: root.selectedLightingColor() === modelData.key ? 3 : 1
+                            border.color: root.selectedLightingColor() === modelData.key
                                 ? Kirigami.Theme.highlightColor
                                 : Kirigami.Theme.textColor
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root.runControl("color", parent.modelData.key)
+                                onClicked: root.runControl(root.lightingFeature(), parent.modelData.key)
                             }
                         }
                     }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — unreleased
+
+- control synchronized, Logo-only, or Ring-only solid colors from the widget;
+- preserve both complete five-segment zone profiles whenever either zone is
+  changed;
+- migrate the previous synchronized color state without guessing unknown
+  hardware values.
+
 ## 0.1.1 — 2026-09-17
 
 - reserve enough popup height to display all solid-color controls without
