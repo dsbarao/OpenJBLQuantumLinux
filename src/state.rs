@@ -49,7 +49,13 @@ impl RuntimeState {
             [0x07, value @ 0x00..=0x01] => {
                 replace_if_changed(&mut self.lighting_enabled, *value == 1)
             }
-            [0x08, value @ 0x00..=0x64] => replace_if_changed(&mut self.battery_percent, *value),
+            // The headset repeats 0x08 with the same percentage when USB-C
+            // power changes. Keep it as a refresh event so charging state is
+            // re-read from USB topology even when the battery value is equal.
+            [0x08, value @ 0x00..=0x64] => {
+                self.battery_percent = Some(*value);
+                true
+            }
             [0x09, value @ 0x00..=0x01] => {
                 replace_if_changed(&mut self.headset_connected, *value == 1)
             }
@@ -149,7 +155,7 @@ mod tests {
         assert_eq!(state.lighting_enabled, Some(true));
         assert!(state.apply_input(&[0x08, 75]));
         assert_eq!(state.battery_percent, Some(75));
-        assert!(!state.apply_input(&[0x08, 75]));
+        assert!(state.apply_input(&[0x08, 75]));
         assert!(!state.apply_input(&[0xff, 0x01]));
     }
 }
