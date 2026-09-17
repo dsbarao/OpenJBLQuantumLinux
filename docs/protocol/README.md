@@ -11,6 +11,7 @@ Current consolidated mappings:
 - [`microphone.md`](microphone.md): device versus host-side microphone controls.
 - [`ambient-control.md`](ambient-control.md): ANC and TalkThru command/confirmation
   mapping.
+- [`audio-processing.md`](audio-processing.md): host-side output DSP controls.
 
 Use `evidence-ledger.md` to index experiments and sanitized artifacts. Keep
 raw captures outside Git in `captures/`. Protocol documents must distinguish:
