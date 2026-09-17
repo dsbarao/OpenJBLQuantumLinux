@@ -1,7 +1,8 @@
 # Lighting protocol
 
-Status: partially mapped from controlled QuantumENGINE USBPcap captures. These
-writes are documentation only and are not implemented by the Linux client.
+Status: partially mapped from controlled QuantumENGINE USBPcap captures. The
+global on/off command is implemented through the Linux client's strict
+allowlist; profile writes remain documentation-only.
 
 ## Global state
 

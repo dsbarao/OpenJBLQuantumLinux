@@ -51,6 +51,18 @@ const fn hidiocgfeature(length: usize) -> std::ffi::c_ulong {
         | 0x07
 }
 
+#[cfg(target_os = "linux")]
+const fn hidiocsfeature(length: usize) -> std::ffi::c_ulong {
+    const IOC_WRITE: std::ffi::c_ulong = 1;
+    const IOC_READ: std::ffi::c_ulong = 2;
+    const IOC_SIZE_SHIFT: u32 = 16;
+    const IOC_DIR_SHIFT: u32 = 30;
+    ((IOC_READ | IOC_WRITE) << IOC_DIR_SHIFT)
+        | ((length as std::ffi::c_ulong) << IOC_SIZE_SHIFT)
+        | ((b'H' as std::ffi::c_ulong) << 8)
+        | 0x06
+}
+
 #[derive(Debug, PartialEq, Eq)]
 struct Endpoint {
     address: u8,
@@ -157,6 +169,13 @@ struct Export<'a> {
 struct StatusOptions {
     dry_run: bool,
     json: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct SetCommand {
+    feature: &'static str,
+    value: &'static str,
+    report: [u8; 2],
 }
 
 #[derive(Debug, Serialize)]
@@ -635,6 +654,106 @@ fn read_feature_report_read_only(
     Ok(buffer)
 }
 
+fn set_feature_report_allowlisted(node: &Path, report: &[u8; 2]) -> Result<(), String> {
+    let metadata = fs::metadata(node).map_err(|error| format!("{}: {error}", node.display()))?;
+    if !metadata.file_type().is_char_device() {
+        return Err(format!("refusing non-character device: {}", node.display()));
+    }
+    let device = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(node)
+        .map_err(|error| format!("{}: {error}", node.display()))?;
+    let mut buffer = *report;
+    #[cfg(target_os = "linux")]
+    // SAFETY: the device remains open, the two-byte buffer matches the ioctl
+    // size, and callers can only supply one of the compile-time allowlisted
+    // reports produced by `parse_set_command`.
+    let count = unsafe {
+        ioctl(
+            device.as_raw_fd(),
+            hidiocsfeature(buffer.len()),
+            buffer.as_mut_ptr(),
+        )
+    };
+    #[cfg(not(target_os = "linux"))]
+    let count = -1;
+    if count != buffer.len() as std::ffi::c_int {
+        return Err(format!(
+            "HIDIOCSFEATURE 0x{:02x} failed: {}",
+            report[0],
+            io::Error::last_os_error()
+        ));
+    }
+    Ok(())
+}
+
+fn parse_set_command(mut args: impl Iterator<Item = String>) -> Result<SetCommand, String> {
+    let feature = args.next().ok_or("set requires a feature")?;
+    let value = args.next().ok_or("set requires a value")?;
+    if args.next().is_some() {
+        return Err("set accepts exactly one feature and one value".into());
+    }
+    let command = match (feature.as_str(), value.as_str()) {
+        ("ambient", "off") => SetCommand {
+            feature: "ambient",
+            value: "off",
+            report: [0x46, 0x00],
+        },
+        ("ambient", "anc") => SetCommand {
+            feature: "ambient",
+            value: "anc",
+            report: [0x46, 0x01],
+        },
+        ("ambient", "talkthru") => SetCommand {
+            feature: "ambient",
+            value: "talkthru",
+            report: [0x46, 0x02],
+        },
+        ("lighting", "off") => SetCommand {
+            feature: "lighting",
+            value: "off",
+            report: [0x4b, 0x00],
+        },
+        ("lighting", "on") => SetCommand {
+            feature: "lighting",
+            value: "on",
+            report: [0x4b, 0x01],
+        },
+        ("sidetone", "off") => SetCommand {
+            feature: "sidetone",
+            value: "off",
+            report: [0x5d, 0x00],
+        },
+        ("sidetone", "low") => SetCommand {
+            feature: "sidetone",
+            value: "low",
+            report: [0x5d, 0x01],
+        },
+        ("sidetone", "medium") => SetCommand {
+            feature: "sidetone",
+            value: "medium",
+            report: [0x5d, 0x02],
+        },
+        ("sidetone", "high") => SetCommand {
+            feature: "sidetone",
+            value: "high",
+            report: [0x5d, 0x03],
+        },
+        _ => return Err(format!("unsupported control: {feature} {value}")),
+    };
+    Ok(command)
+}
+
+fn set_control(command: SetCommand) -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    set_feature_report_allowlisted(&node, &command.report)?;
+    println!("{} set to {}", command.feature, command.value);
+    Ok(true)
+}
+
 fn parse_status_options(args: impl Iterator<Item = String>) -> Result<StatusOptions, String> {
     let mut options = StatusOptions::default();
     let mut args = args.peekable();
@@ -793,9 +912,9 @@ fn show(dry_run: bool) -> Result<bool, String> {
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|probe-status|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
-    eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
+    eprintln!("set permits only confirmed two-byte Feature Reports from the built-in allowlist");
 }
 
 fn main() {
@@ -808,6 +927,7 @@ fn main() {
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
         "status" => parse_status_options(args).and_then(status),
         "probe-status" => probe_status(),
+        "set" => parse_set_command(args).and_then(set_control),
         "notify" => notify(args.next().as_deref() == Some("--dry-run")),
         "show" => show(args.next().as_deref() == Some("--dry-run")),
         "export"
@@ -885,6 +1005,18 @@ mod tests {
     #[test]
     fn builds_linux_get_feature_ioctl_number() {
         assert_eq!(hidiocgfeature(2), 0xc002_4807);
+        assert_eq!(hidiocsfeature(2), 0xc002_4806);
+    }
+
+    #[test]
+    fn set_commands_are_strictly_allowlisted() {
+        let parse = |items: &[&str]| parse_set_command(items.iter().map(|item| (*item).into()));
+        assert_eq!(parse(&["ambient", "anc"]).unwrap().report, [0x46, 0x01]);
+        assert_eq!(parse(&["lighting", "off"]).unwrap().report, [0x4b, 0x00]);
+        assert_eq!(parse(&["sidetone", "high"]).unwrap().report, [0x5d, 0x03]);
+        assert!(parse(&["raw", "46ff"]).is_err());
+        assert!(parse(&["ambient", "invalid"]).is_err());
+        assert!(parse(&["ambient", "anc", "extra"]).is_err());
     }
 
     #[test]

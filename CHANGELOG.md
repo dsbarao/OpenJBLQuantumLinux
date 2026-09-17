@@ -17,6 +17,8 @@ First usable read-only Linux release for the JBL Quantum 810:
   green/yellow/red charge thresholds;
 - detect the USB-C charging connection as `0ecb:206a` and show a cyan charging
   state with a lightning indicator in the Plasma widget;
+- add strictly allowlisted USB controls for ambient mode, global lighting, and
+  sidetone, exposed as menus in the Plasma widget;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

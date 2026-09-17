@@ -24,6 +24,9 @@ Feature Report `0x5d` controls the hardware sidetone level:
 5d 03  # high
 ```
 
+These four values are implemented through the Linux client's strict write
+allowlist.
+
 The Portuguese QuantumENGINE UI labels the three levels `Graves`, `Médios`,
 and `Agudos`; controlled capture shows these are ordinal sidetone intensities,
 not frequency bands.

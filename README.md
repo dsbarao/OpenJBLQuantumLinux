@@ -167,7 +167,11 @@ kpackagetool6 --type Plasma/Applet --upgrade \
 
 Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
-`openjblquantum status --format json`; it contains no device-write path.
+allowlisted `openjblquantum` commands. Its popup includes menus for ambient
+mode (off/ANC/TalkThru), global lighting (on/off), and hardware sidetone
+(off/low/medium/high). These controls send only the confirmed two-byte Feature
+Reports documented under `docs/protocol/`; arbitrary reports are rejected by
+the CLI parser.
 
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:

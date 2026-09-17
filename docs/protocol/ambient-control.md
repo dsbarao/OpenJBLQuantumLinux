@@ -1,7 +1,8 @@
 # Ambient sound control
 
 Status: command and confirmation values confirmed through controlled
-QuantumENGINE capture. Writes remain documentation-only in the Linux client.
+QuantumENGINE capture and implemented through the Linux client's strict
+allowlist.
 
 ## Command
 

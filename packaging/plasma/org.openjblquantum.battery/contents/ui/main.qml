@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
@@ -15,6 +16,7 @@ PlasmoidItem {
     property bool charging: false
     property string rawFeature: ""
     property string errorMessage: ""
+    property string actionMessage: ""
     property bool updating: false
     readonly property color batteryColor: charging
         ? "#22d3ee"
@@ -34,6 +36,12 @@ PlasmoidItem {
         updating = true
         errorMessage = ""
         executable.connectSource(command)
+    }
+
+    function runControl(feature, value) {
+        actionMessage = "Aplicando…"
+        const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} ${value}"`
+        executable.connectSource(controlCommand)
     }
 
     function applyResult(data) {
@@ -147,10 +155,10 @@ PlasmoidItem {
     }
 
     fullRepresentation: ColumnLayout {
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 14
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 9
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 16
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 11
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 19
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 16
+        Layout.preferredWidth: Kirigami.Units.gridUnit * 21
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 18
         spacing: Kirigami.Units.largeSpacing
 
         Kirigami.Icon {
@@ -166,6 +174,40 @@ PlasmoidItem {
             color: root.batteryColor
             font.pixelSize: Kirigami.Units.gridUnit * 2
             font.bold: true
+        }
+
+        PlasmaComponents.Label {
+            Layout.fillWidth: true
+            visible: root.actionMessage.length > 0
+            horizontalAlignment: Text.AlignHCenter
+            text: root.actionMessage
+            color: root.errorMessage.length > 0
+                ? Kirigami.Theme.negativeTextColor
+                : Kirigami.Theme.positiveTextColor
+            wrapMode: Text.Wrap
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Kirigami.Units.smallSpacing
+
+            PlasmaComponents.Button {
+                text: "Ambiente"
+                icon.name: "audio-headphones-symbolic"
+                onClicked: ambientMenu.popup()
+            }
+
+            PlasmaComponents.Button {
+                text: "Luzes"
+                icon.name: "lightbulb"
+                onClicked: lightingMenu.popup()
+            }
+
+            PlasmaComponents.Button {
+                text: "Sidetone"
+                icon.name: "microphone-sensitivity-high"
+                onClicked: sidetoneMenu.popup()
+            }
         }
 
         PlasmaComponents.Label {
@@ -201,9 +243,45 @@ PlasmoidItem {
 
         onNewData: function(sourceName, data) {
             disconnectSource(sourceName)
+            if (sourceName !== root.command) {
+                const exitCode = Number(data["exit code"] ?? -1)
+                const stderr = String(data.stderr ?? "").trim()
+                if (exitCode === 0) {
+                    root.errorMessage = ""
+                    root.actionMessage = "Configuração aplicada"
+                } else {
+                    root.errorMessage = stderr || "Falha ao aplicar configuração"
+                    root.actionMessage = root.errorMessage
+                }
+                return
+            }
             root.updating = false
             root.applyResult(data)
         }
+    }
+
+    QQC2.Menu {
+        id: ambientMenu
+        title: "Controle de som ambiente"
+        QQC2.MenuItem { text: "Desligado"; onTriggered: root.runControl("ambient", "off") }
+        QQC2.MenuItem { text: "ANC"; onTriggered: root.runControl("ambient", "anc") }
+        QQC2.MenuItem { text: "TalkThru"; onTriggered: root.runControl("ambient", "talkthru") }
+    }
+
+    QQC2.Menu {
+        id: lightingMenu
+        title: "Iluminação"
+        QQC2.MenuItem { text: "Ligar"; onTriggered: root.runControl("lighting", "on") }
+        QQC2.MenuItem { text: "Desligar"; onTriggered: root.runControl("lighting", "off") }
+    }
+
+    QQC2.Menu {
+        id: sidetoneMenu
+        title: "Sidetone"
+        QQC2.MenuItem { text: "Desligado"; onTriggered: root.runControl("sidetone", "off") }
+        QQC2.MenuItem { text: "Baixo"; onTriggered: root.runControl("sidetone", "low") }
+        QQC2.MenuItem { text: "Médio"; onTriggered: root.runControl("sidetone", "medium") }
+        QQC2.MenuItem { text: "Alto"; onTriggered: root.runControl("sidetone", "high") }
     }
 
     Timer {
