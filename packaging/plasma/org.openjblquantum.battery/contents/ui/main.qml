@@ -471,7 +471,7 @@ PlasmoidItem {
         }
     }
 
-    DBus.ServiceWatcher {
+    DBus.DBusServiceWatcher {
         id: daemonWatcher
         busType: DBus.BusType.Session
         watchedService: "org.openjblquantum.State"
