@@ -1,0 +1,3 @@
+# Grant the active local desktop session access to the JBL Quantum 810 hidraw
+# interface. This matches only USB 0ecb:2069, interface 05.
+SUBSYSTEM=="hidraw", ENV{ID_VENDOR_ID}=="0ecb", ENV{ID_MODEL_ID}=="2069", ENV{ID_USB_INTERFACE_NUM}=="05", TAG+="uaccess"

@@ -1,0 +1,602 @@
+use std::env;
+use std::fs;
+use std::io::{self, Read};
+use std::os::unix::fs::FileTypeExt;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::ser::SerializeStruct;
+use serde::{Serialize, Serializer};
+
+mod hid;
+
+const USB_ROOT: &str = "/sys/bus/usb/devices";
+const JBL_VENDOR_ID: &str = "0ecb";
+const QUANTUM_810_PRODUCT_ID: &str = "2069";
+
+#[derive(Debug, PartialEq, Eq)]
+struct Endpoint {
+    address: u8,
+    attributes: u8,
+    max_packet_size: u16,
+    interval: u8,
+}
+
+impl Serialize for Endpoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Endpoint", 6)?;
+        state.serialize_field("address", &format!("0x{:02x}", self.address))?;
+        state.serialize_field("direction", self.direction())?;
+        state.serialize_field("transfer_type", self.transfer_type())?;
+        state.serialize_field("attributes", &format!("0x{:02x}", self.attributes))?;
+        state.serialize_field("max_packet_size", &self.max_packet_size)?;
+        state.serialize_field("interval", &self.interval)?;
+        state.end()
+    }
+}
+
+impl Endpoint {
+    fn direction(&self) -> &'static str {
+        if self.address & 0x80 != 0 {
+            "IN"
+        } else {
+            "OUT"
+        }
+    }
+
+    fn transfer_type(&self) -> &'static str {
+        match self.attributes & 0x03 {
+            0 => "control",
+            1 => "isochronous",
+            2 => "bulk",
+            3 => "interrupt",
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Interface {
+    number: u8,
+    alternate_setting: u8,
+    class: u8,
+    subclass: u8,
+    protocol: u8,
+    endpoints: Vec<Endpoint>,
+}
+
+#[derive(Debug, Serialize)]
+struct InterfaceReport {
+    number: u8,
+    alternate_setting: u8,
+    active: bool,
+    class: String,
+    subclass: String,
+    protocol: String,
+    driver: String,
+    endpoints: Vec<Endpoint>,
+}
+
+#[derive(Debug, Serialize)]
+struct AlsaPcm {
+    node: String,
+    direction: String,
+    role: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct AlsaCard {
+    number: u32,
+    id: Option<String>,
+    pcms: Vec<AlsaPcm>,
+}
+
+#[derive(Debug, Serialize)]
+struct DeviceReport {
+    vendor_id: String,
+    product_id: String,
+    manufacturer: String,
+    product: String,
+    revision: String,
+    speed_mbps: String,
+    sysfs: String,
+    descriptor_bytes: usize,
+    interfaces: Vec<InterfaceReport>,
+    alsa: Vec<AlsaCard>,
+    hid: Option<hid::DescriptorSummary>,
+    confirmed_input_mappings: Vec<hid::KnownInputMapping>,
+}
+
+#[derive(Serialize)]
+struct Export<'a> {
+    schema: u8,
+    devices: &'a [DeviceReport],
+}
+
+fn read_trimmed(path: impl AsRef<Path>) -> Option<String> {
+    fs::read_to_string(path)
+        .ok()
+        .map(|value| value.trim().to_owned())
+}
+
+fn supported_devices() -> io::Result<Vec<PathBuf>> {
+    let mut devices = Vec::new();
+    for entry in fs::read_dir(USB_ROOT)? {
+        let path = entry?.path();
+        if read_trimmed(path.join("idVendor")).as_deref() == Some(JBL_VENDOR_ID)
+            && read_trimmed(path.join("idProduct")).as_deref() == Some(QUANTUM_810_PRODUCT_ID)
+        {
+            devices.push(path);
+        }
+    }
+    devices.sort();
+    Ok(devices)
+}
+
+fn parse_descriptors(data: &[u8]) -> Result<Vec<Interface>, String> {
+    let mut interfaces: Vec<Interface> = Vec::new();
+    let mut offset = 0;
+    while offset + 2 <= data.len() {
+        let length = data[offset] as usize;
+        let descriptor_type = data[offset + 1];
+        if length < 2 || offset + length > data.len() {
+            return Err(format!(
+                "invalid descriptor length {length} at offset {offset}"
+            ));
+        }
+        let descriptor = &data[offset..offset + length];
+        match descriptor_type {
+            4 if length >= 9 => interfaces.push(Interface {
+                number: descriptor[2],
+                alternate_setting: descriptor[3],
+                class: descriptor[5],
+                subclass: descriptor[6],
+                protocol: descriptor[7],
+                endpoints: Vec::new(),
+            }),
+            5 if length >= 7 => {
+                if let Some(interface) = interfaces.last_mut() {
+                    interface.endpoints.push(Endpoint {
+                        address: descriptor[2],
+                        attributes: descriptor[3],
+                        max_packet_size: u16::from_le_bytes([descriptor[4], descriptor[5]])
+                            & 0x07ff,
+                        interval: descriptor[6],
+                    });
+                }
+            }
+            _ => {}
+        }
+        offset += length;
+    }
+    if offset != data.len() {
+        return Err(format!("trailing descriptor byte at offset {offset}"));
+    }
+    Ok(interfaces)
+}
+
+fn interface_path(device: &Path, number: u8) -> Option<PathBuf> {
+    let name = device.file_name()?.to_str()?;
+    Some(device.with_file_name(format!("{name}:1.{number}")))
+}
+
+fn driver_name(path: &Path) -> String {
+    fs::read_link(path.join("driver"))
+        .ok()
+        .and_then(|driver| {
+            driver
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+        })
+        .unwrap_or_else(|| "none".into())
+}
+
+fn active_alternate(path: &Path) -> Option<u8> {
+    read_trimmed(path.join("bAlternateSetting"))?.parse().ok()
+}
+
+fn alsa_cards(device: &Path) -> Vec<AlsaCard> {
+    let Ok(device_real) = fs::canonicalize(device) else {
+        return Vec::new();
+    };
+    let Ok(entries) = fs::read_dir("/sys/class/sound") else {
+        return Vec::new();
+    };
+    let mut cards = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(number) = name
+            .strip_prefix("card")
+            .and_then(|value| value.parse().ok())
+        else {
+            continue;
+        };
+        let Ok(card_real) = fs::canonicalize(entry.path()) else {
+            continue;
+        };
+        if !card_real.starts_with(&device_real) {
+            continue;
+        }
+        let mut pcms = Vec::new();
+        if let Ok(sound_entries) = fs::read_dir("/sys/class/sound") {
+            for pcm in sound_entries.flatten() {
+                let pcm_name = pcm.file_name().to_string_lossy().into_owned();
+                let prefix = format!("pcmC{number}D");
+                if !pcm_name.starts_with(&prefix) {
+                    continue;
+                }
+                let direction = match pcm_name.chars().last() {
+                    Some('p') => "playback",
+                    Some('c') => "capture",
+                    _ => continue,
+                };
+                let role = if pcm_name == format!("pcmC{number}D0p") {
+                    Some("game".into())
+                } else if pcm_name == format!("pcmC{number}D1p") {
+                    Some("chat".into())
+                } else if pcm_name == format!("pcmC{number}D0c") {
+                    Some("microphone".into())
+                } else {
+                    None
+                };
+                pcms.push(AlsaPcm {
+                    node: pcm_name,
+                    direction: direction.into(),
+                    role,
+                });
+            }
+        }
+        pcms.sort_by(|left, right| left.node.cmp(&right.node));
+        cards.push(AlsaCard {
+            number,
+            id: read_trimmed(entry.path().join("id")),
+            pcms,
+        });
+    }
+    cards.sort_by_key(|card| card.number);
+    cards
+}
+
+fn device_reports() -> Result<Vec<DeviceReport>, String> {
+    let devices = supported_devices().map_err(|error| error.to_string())?;
+    let mut reports = Vec::new();
+    for device in devices {
+        let descriptor_data =
+            fs::read(device.join("descriptors")).map_err(|error| error.to_string())?;
+        let parsed = parse_descriptors(&descriptor_data)?;
+        let mut interfaces = Vec::new();
+        for interface in parsed {
+            let path = interface_path(&device, interface.number)
+                .ok_or_else(|| "invalid sysfs device path".to_owned())?;
+            interfaces.push(InterfaceReport {
+                number: interface.number,
+                alternate_setting: interface.alternate_setting,
+                active: active_alternate(&path) == Some(interface.alternate_setting),
+                class: format!("{:02x}", interface.class),
+                subclass: format!("{:02x}", interface.subclass),
+                protocol: format!("{:02x}", interface.protocol),
+                driver: driver_name(&path),
+                endpoints: interface.endpoints,
+            });
+        }
+        reports.push(DeviceReport {
+            vendor_id: JBL_VENDOR_ID.into(),
+            product_id: QUANTUM_810_PRODUCT_ID.into(),
+            manufacturer: read_trimmed(device.join("manufacturer"))
+                .unwrap_or_else(|| "unknown".into()),
+            product: read_trimmed(device.join("product")).unwrap_or_else(|| "unknown".into()),
+            revision: read_trimmed(device.join("bcdDevice")).unwrap_or_else(|| "unknown".into()),
+            speed_mbps: read_trimmed(device.join("speed")).unwrap_or_else(|| "unknown".into()),
+            sysfs: device.display().to_string(),
+            descriptor_bytes: descriptor_data.len(),
+            interfaces,
+            alsa: alsa_cards(&device),
+            hid: read_quantum_hid_summary()?,
+            confirmed_input_mappings: hid::confirmed_mappings(),
+        });
+    }
+    Ok(reports)
+}
+
+fn scan() -> io::Result<bool> {
+    let devices = supported_devices()?;
+    for path in &devices {
+        let name = read_trimmed(path.join("product")).unwrap_or_else(|| "unknown".into());
+        println!("found {JBL_VENDOR_ID}:{QUANTUM_810_PRODUCT_ID} {name}");
+        println!("sysfs={}", path.display());
+    }
+    Ok(!devices.is_empty())
+}
+
+fn inspect() -> Result<bool, String> {
+    let reports = device_reports()?;
+    for report in &reports {
+        println!("Device {JBL_VENDOR_ID}:{QUANTUM_810_PRODUCT_ID}");
+        println!("  manufacturer: {}", report.manufacturer);
+        println!("  product: {}", report.product);
+        println!("  revision: {}", report.revision);
+        println!("  speed: {} Mbit/s", report.speed_mbps);
+        println!("  sysfs: {}", report.sysfs);
+        println!("  descriptor bytes: {}", report.descriptor_bytes);
+        println!("  interfaces:");
+        for interface in &report.interfaces {
+            let marker = if interface.active {
+                "active"
+            } else {
+                "inactive"
+            };
+            println!(
+                "    interface {} alt {} ({marker}): class {}/{}/{}, driver {}",
+                interface.number,
+                interface.alternate_setting,
+                interface.class,
+                interface.subclass,
+                interface.protocol,
+                interface.driver,
+            );
+            for endpoint in &interface.endpoints {
+                println!(
+                    "      endpoint 0x{:02x} {}: {}, max packet {} B, interval {}",
+                    endpoint.address,
+                    endpoint.direction(),
+                    endpoint.transfer_type(),
+                    endpoint.max_packet_size,
+                    endpoint.interval,
+                );
+            }
+        }
+        println!("  ALSA:");
+        for card in &report.alsa {
+            println!(
+                "    card {}: {}",
+                card.number,
+                card.id.as_deref().unwrap_or("unknown")
+            );
+            for pcm in &card.pcms {
+                let role = pcm
+                    .role
+                    .as_deref()
+                    .map(|role| format!(", role={role}"))
+                    .unwrap_or_default();
+                println!("      {}: {}{}", pcm.node, pcm.direction, role);
+            }
+        }
+    }
+    Ok(!reports.is_empty())
+}
+
+fn export_json() -> Result<bool, String> {
+    let reports = device_reports()?;
+    let export = Export {
+        schema: 1,
+        devices: &reports,
+    };
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&export).map_err(|error| error.to_string())?
+    );
+    Ok(!reports.is_empty())
+}
+
+fn hid_descriptor() -> Result<bool, String> {
+    if let Some(summary) = read_quantum_hid_summary()? {
+        println!("HID report descriptor");
+        println!("  descriptor bytes: {}", summary.descriptor_bytes);
+        println!("  usage pages: {}", summary.usage_pages.join(", "));
+        println!("  collections: {}", summary.collections);
+        println!("  reports:");
+        for report in summary.reports {
+            let id = report
+                .id
+                .map_or_else(|| "none".into(), |id| format!("0x{id:02x}"));
+            println!(
+                "    ID {id}: {}, {} bits / {} payload bytes / {} wire bytes",
+                report.kind.label(),
+                report.payload_bits,
+                report.payload_bytes,
+                report.wire_bytes,
+            );
+        }
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+fn read_quantum_hid_summary() -> Result<Option<hid::DescriptorSummary>, String> {
+    let Some(device) = quantum_hid_device()? else {
+        return Ok(None);
+    };
+    let bytes = fs::read(device.join("report_descriptor")).map_err(|error| error.to_string())?;
+    hid::parse(&bytes).map(Some)
+}
+
+fn quantum_hid_device() -> Result<Option<PathBuf>, String> {
+    let entries = fs::read_dir("/sys/bus/hid/devices").map_err(|error| error.to_string())?;
+    for entry in entries.flatten() {
+        let uevent = read_trimmed(entry.path().join("uevent")).unwrap_or_default();
+        if uevent.contains("HID_ID=0003:00000ECB:00002069") {
+            return Ok(Some(entry.path()));
+        }
+    }
+    Ok(None)
+}
+
+fn quantum_hidraw_node() -> Result<Option<PathBuf>, String> {
+    let Some(hid_device) = quantum_hid_device()? else {
+        return Ok(None);
+    };
+    let directory = hid_device.join("hidraw");
+    let entries = fs::read_dir(directory).map_err(|error| error.to_string())?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if name.starts_with("hidraw")
+            && name[6..]
+                .chars()
+                .all(|character| character.is_ascii_digit())
+        {
+            return Ok(Some(Path::new("/dev").join(name)));
+        }
+    }
+    Ok(None)
+}
+
+fn format_hid_report(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn monitor(dry_run: bool) -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    println!("matched JBL Quantum 810 HID node: {}", node.display());
+    println!("access mode: read-only (no Output/Feature reports)");
+    if dry_run {
+        match fs::metadata(&node) {
+            Ok(metadata) if metadata.file_type().is_char_device() => {
+                println!("dry run: character device exists; no open/read performed");
+            }
+            Ok(_) => return Err(format!("refusing non-character device: {}", node.display())),
+            Err(error) => println!("dry run: device node is not accessible here: {error}"),
+        }
+        return Ok(true);
+    }
+
+    let metadata = fs::metadata(&node).map_err(|error| format!("{}: {error}", node.display()))?;
+    if !metadata.file_type().is_char_device() {
+        return Err(format!("refusing non-character device: {}", node.display()));
+    }
+    // File::open uses read-only access. This code has no write handle and makes
+    // no ioctl/control request; it can only consume spontaneous input reports.
+    let mut device = fs::File::open(&node).map_err(|error| {
+        if error.kind() == io::ErrorKind::PermissionDenied {
+            format!(
+                "{}: permission denied; install the repository's narrow udev rule, then reconnect the dongle",
+                node.display()
+            )
+        } else {
+            format!("{}: {error}", node.display())
+        }
+    })?;
+    println!("waiting for spontaneous input reports; press Ctrl-C to stop");
+    let mut buffer = [0_u8; 64];
+    loop {
+        let count = device
+            .read(&mut buffer)
+            .map_err(|error| error.to_string())?;
+        if count == 0 {
+            return Err("hidraw returned end-of-file".into());
+        }
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?;
+        let interpretation = hid::interpret_input(&buffer[..count])
+            .map(|meaning| format!("  {meaning}"))
+            .unwrap_or_default();
+        println!(
+            "{}.{:03}  len={}  {}{}",
+            timestamp.as_secs(),
+            timestamp.subsec_millis(),
+            count,
+            format_hid_report(&buffer[..count]),
+            interpretation,
+        );
+    }
+}
+
+fn usage() {
+    eprintln!(
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|export --format json>"
+    );
+    eprintln!("both commands are passive and read only from Linux sysfs");
+}
+
+fn main() {
+    let mut args = env::args().skip(1);
+    let command = args.next().unwrap_or_else(|| "scan".into());
+    let result = match command.as_str() {
+        "scan" => scan().map_err(|error| error.to_string()),
+        "inspect" => inspect(),
+        "hid-descriptor" => hid_descriptor(),
+        "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
+        "export"
+            if args.next().as_deref() == Some("--format")
+                && args.next().as_deref() == Some("json") =>
+        {
+            export_json()
+        }
+        "help" | "--help" | "-h" => {
+            usage();
+            return;
+        }
+        _ => {
+            usage();
+            std::process::exit(2);
+        }
+    };
+    match result {
+        Ok(true) => {}
+        Ok(false) => {
+            eprintln!("JBL Quantum 810 dongle (0ecb:2069) not found");
+            std::process::exit(1);
+        }
+        Err(error) => {
+            eprintln!("inspection failed: {error}");
+            std::process::exit(2);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_interface_and_endpoint() {
+        let bytes = [9, 4, 5, 0, 1, 3, 0, 0, 3, 7, 5, 0x83, 0x03, 0x40, 0x00, 3];
+        assert_eq!(
+            parse_descriptors(&bytes).unwrap(),
+            vec![Interface {
+                number: 5,
+                alternate_setting: 0,
+                class: 3,
+                subclass: 0,
+                protocol: 0,
+                endpoints: vec![Endpoint {
+                    address: 0x83,
+                    attributes: 3,
+                    max_packet_size: 64,
+                    interval: 3
+                }],
+            }]
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_descriptor_length() {
+        assert!(parse_descriptors(&[1, 4]).is_err());
+        assert!(parse_descriptors(&[9, 4, 0]).is_err());
+    }
+
+    #[test]
+    fn endpoint_helpers_decode_direction_and_type() {
+        let endpoint = Endpoint {
+            address: 0x81,
+            attributes: 1,
+            max_packet_size: 512,
+            interval: 4,
+        };
+        assert_eq!(endpoint.direction(), "IN");
+        assert_eq!(endpoint.transfer_type(), "isochronous");
+    }
+}

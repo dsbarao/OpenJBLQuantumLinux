@@ -1,0 +1,26 @@
+# Evidence ledger
+
+| ID | Date | Host/device | Action | Artifact SHA-256 | Result | Status |
+|---|---|---|---|---|---|---|
+| INV-001 | 2026-09-16 | CachyOS / 0ecb:2069 | Passive sysfs and udev inventory | n/a | USB topology documented | Observed |
+| HID-001 | 2026-09-16 | CachyOS / 0ecb:2069 | Read kernel-exported HID report descriptor | `8b4f587e29256e8785ab98532208eaf9db35cf0732ca7e527541152c2c959691` | 553-byte descriptor; report layout documented | Observed |
+| EVT-001 | 2026-09-16 | CachyOS / 0ecb:2069 | Headset switched off, then on; read-only hidraw monitor | conversation transcript | `09 00` on shutdown, `09 01` plus state burst on startup | Observed |
+| EVT-002 | 2026-09-16 | CachyOS / 0ecb:2069 | Headset switched off only; read-only monitor | conversation transcript | Only `09 00` observed | Confirmed |
+| EVT-003 | 2026-09-16 | CachyOS / 0ecb:2069 | Headset switched on only; read-only monitor | conversation transcript | `09 01` followed by repeatable state burst | Confirmed |
+| EVT-004 | 2026-09-16 | CachyOS / 0ecb:2069 | Microphone boom raised | conversation transcript | `06 01`, `06 00`, `2f 00` | Observed |
+| EVT-005 | 2026-09-16 | CachyOS / 0ecb:2069 | Microphone boom lowered | conversation transcript | `2f 02`, `06 01`, `2f 00` | Observed |
+| EVT-006 | 2026-09-16 | CachyOS / 0ecb:2069 | Three slow boom up/down cycles | conversation transcript | Stable alternation confirms `06 00` muted, `06 01` active | Confirmed |
+| EVT-007 | 2026-09-16 | CachyOS / 0ecb:2069 | Dedicated microphone mute button pressed twice | conversation transcript | Button converges to same `06 00/01` state as boom | Confirmed |
+| EVT-008 | 2026-09-16 | CachyOS / 0ecb:2069 | Main volume wheel moved; hidraw and ALSA compared | `afcdc2b576bcc94c4af2ef19b413c741ab634222d48330149b329afa7f4f0b44` | No HID event or ALSA state change | Confirmed local control |
+| EVT-009 | 2026-09-16 | CachyOS / 0ecb:2069 | Game/Chat dial moved Game then Chat; ALSA compared | `afcdc2b576bcc94c4af2ef19b413c741ab634222d48330149b329afa7f4f0b44` | Report `10` absolute range `00` Chat to `10` Game; ALSA unchanged | Confirmed |
+| EVT-010 | 2026-09-16 | CachyOS / 0ecb:2069 | Slow Game/Chat sweep from Chat toward Game | conversation transcript | Unit-step values observed; `07/09` absent around center | Observed |
+| EVT-011 | 2026-09-16 | CachyOS / 0ecb:2069 | Slow reverse Game/Chat sweep | conversation transcript | Confirms 15 states: `00–06`, `08`, `0a–10` | Confirmed |
+| EVT-012 | 2026-09-16 | CachyOS / 0ecb:2069 | USB-C charging cable connected then disconnected | conversation transcript | `08 5a` emitted on each transition; payload unchanged | Strong hypothesis |
+| EVT-013 | 2026-09-16 | CachyOS / 0ecb:2069 | Headset power cycle while USB-C charging cable connected | conversation transcript | Startup snapshot unchanged; `08 5a` repeated once | Observed negative |
+| EVT-014 | 2026-09-16 | CachyOS / 0ecb:2069 | ANC toggled repeatedly | conversation transcript | Six transitions confirm `02 00` off, `02 01` on | Confirmed |
+| EVT-015 | 2026-09-16 | CachyOS / 0ecb:2069 | Bluetooth button short press under monitor | conversation report | No hidraw Input Report observed | Observed negative |
+| EVT-016 | 2026-09-16 | CachyOS / 0ecb:2069 | Bluetooth long press, then short press | conversation transcript | `03 02` pairing on; `03 00` pairing off | Confirmed |
+| EVT-017 | 2026-09-16 | CachyOS / 0ecb:2069 | Known Bluetooth device connected, then disconnected | conversation transcript | `03 01` connected; `03 00` disconnected | Confirmed |
+| EVT-018 | 2026-09-16 | CachyOS / 0ecb:2069 | ANC/TalkThru mode cycled twice | conversation transcript | Confirms `02 00` off, `02 01` ANC, `02 02` TalkThru | Confirmed |
+| EVT-019 | 2026-09-16 | CachyOS / 0ecb:2069 | 3.5 mm cable connected to headset then disconnected; other end already on PC | conversation transcript | `02 00` on connect, `02 01` on disconnect; no dedicated jack report | Observed |
+| EVT-020 | 2026-09-16 | CachyOS / 0ecb:2069 | 3.5 mm cable cycle with noise control already off | conversation report | No Input Report observed | Confirmed negative |

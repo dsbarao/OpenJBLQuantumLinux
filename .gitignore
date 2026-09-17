@@ -1,0 +1,12 @@
+/target/
+/.venv/
+__pycache__/
+*.py[cod]
+
+# USB captures may contain identifiers and unrelated host traffic.
+/captures/*
+!/captures/.gitkeep
+!/captures/README.md
+
+# Local inventory output; sanitized findings belong in docs/inventory/.
+/work/
