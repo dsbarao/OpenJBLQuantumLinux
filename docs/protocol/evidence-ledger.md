@@ -48,3 +48,4 @@
 | EVT-042 | 2026-09-17 | CachyOS / OpenJBLQuantum widget / 0ecb:2069 | Exercise sidetone off, low, medium, and high | conversation transcript | All four settings applied and produced audible differences | Confirmed |
 | EVT-043 | 2026-09-17 | CachyOS / OpenJBLQuantum widget / 0ecb:2069 | Exercise global lighting off and on | conversation transcript | Headset illumination switched off and on as requested | Confirmed |
 | EVT-044 | 2026-09-17 | CachyOS / OpenJBLQuantum CLI / 0ecb:2069 | Apply complete synchronized cyan Solid profile, toggle lighting off/on, and query cached state | local validation | All 13 allowlisted reports succeeded; state remained `lighting_color: cyan` after lighting confirmation | Confirmed |
+| EVT-045 | 2026-09-17 | CachyOS / OpenJBLQuantum widget / 0ecb:2069 | Apply all six fixed solid-color presets | conversation transcript | Blue, cyan, magenta, red, green, and white changed both illuminated zones successfully | Confirmed |
