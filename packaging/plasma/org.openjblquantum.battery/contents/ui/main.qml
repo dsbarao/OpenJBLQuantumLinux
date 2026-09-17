@@ -121,7 +121,6 @@ PlasmoidItem {
         pickerHue = hue
         pickerSaturation = maximum === 0 ? 0 : delta / maximum
         pickerValue = maximum
-        svCanvas.requestPaint()
     }
 
     function colorComponent(value) {
@@ -397,7 +396,7 @@ PlasmoidItem {
 
             PlasmaComponents.Button {
                 text: "Luzes"
-                icon.name: "lightbulb"
+                icon.source: Qt.resolvedUrl("../images/light-bulb.svg")
                 checkable: true
                 checked: root.openSection === "lighting"
                 onClicked: {
@@ -461,8 +460,8 @@ PlasmoidItem {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
                     enabled: root.deviceAvailable && !root.controlBusy
-                    PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; checkable: true; checked: root.lightingEnabled === true; onClicked: root.runControl("lighting", "on") }
-                    PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; checkable: true; checked: root.lightingEnabled === false; onClicked: root.runControl("lighting", "off") }
+                    PlasmaComponents.Button { text: "Ligar"; icon.source: Qt.resolvedUrl("../images/light-on.svg"); checkable: true; checked: root.lightingEnabled === true; onClicked: root.runControl("lighting", "on") }
+                    PlasmaComponents.Button { text: "Desligar"; icon.source: Qt.resolvedUrl("../images/light-off.svg"); checkable: true; checked: root.lightingEnabled === false; onClicked: root.runControl("lighting", "off") }
                 }
 
                 PlasmaComponents.Label {
@@ -564,6 +563,11 @@ PlasmoidItem {
                             ctx.fillStyle = value
                             ctx.fillRect(0, 0, width, height)
                         }
+                    }
+
+                    Connections {
+                        target: root
+                        function onPickerHueChanged() { svCanvas.requestPaint() }
                     }
 
                     MouseArea {
