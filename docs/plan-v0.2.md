@@ -10,6 +10,7 @@
 - [x] Validate report ID, length, and percentage range.
 - [x] Provide a dry run that does not open the device.
 - [x] Cover parsing and the Linux ioctl request number with hardware-free tests.
+- [x] Provide versioned JSON output without adding another device query.
 
 ## Initial scope
 

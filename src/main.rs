@@ -137,6 +137,23 @@ struct Export<'a> {
     devices: &'a [DeviceReport],
 }
 
+#[derive(Debug, Default, PartialEq, Eq)]
+struct StatusOptions {
+    dry_run: bool,
+    json: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct StatusOutput {
+    schema: u8,
+    device: &'static str,
+    hidraw: String,
+    access: &'static str,
+    dry_run: bool,
+    battery_percent: Option<u8>,
+    raw_feature: Option<String>,
+}
+
 fn read_trimmed(path: impl AsRef<Path>) -> Option<String> {
     fs::read_to_string(path)
         .ok()
@@ -447,22 +464,29 @@ fn quantum_hid_device() -> Result<Option<PathBuf>, String> {
 }
 
 fn quantum_hidraw_node() -> Result<Option<PathBuf>, String> {
-    let Some(hid_device) = quantum_hid_device()? else {
-        return Ok(None);
-    };
-    let directory = hid_device.join("hidraw");
-    let entries = fs::read_dir(directory).map_err(|error| error.to_string())?;
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let Some(name) = name.to_str() else {
+    let devices = fs::read_dir("/sys/bus/hid/devices").map_err(|error| error.to_string())?;
+    for device in devices.flatten() {
+        let uevent = read_trimmed(device.path().join("uevent")).unwrap_or_default();
+        if !uevent.contains("HID_ID=0003:00000ECB:00002069") {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(device.path().join("hidraw")) else {
             continue;
         };
-        if name.starts_with("hidraw")
-            && name[6..]
-                .chars()
-                .all(|character| character.is_ascii_digit())
-        {
-            return Ok(Some(Path::new("/dev").join(name)));
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else {
+                continue;
+            };
+            let node = Path::new("/dev").join(name);
+            if name.starts_with("hidraw")
+                && name[6..]
+                    .chars()
+                    .all(|character| character.is_ascii_digit())
+                && fs::metadata(&node).is_ok_and(|metadata| metadata.file_type().is_char_device())
+            {
+                return Ok(Some(node));
+            }
         }
     }
     Ok(None)
@@ -582,21 +606,63 @@ fn read_feature_report_read_only(
     Ok(buffer)
 }
 
-fn status(dry_run: bool) -> Result<bool, String> {
+fn parse_status_options(args: impl Iterator<Item = String>) -> Result<StatusOptions, String> {
+    let mut options = StatusOptions::default();
+    let mut args = args.peekable();
+    while let Some(argument) = args.next() {
+        match argument.as_str() {
+            "--dry-run" if !options.dry_run => options.dry_run = true,
+            "--format" if !options.json => match args.next().as_deref() {
+                Some("json") => options.json = true,
+                Some(value) => return Err(format!("unsupported status format: {value}")),
+                None => return Err("status --format requires a value".into()),
+            },
+            "--dry-run" | "--format" => {
+                return Err(format!("duplicate status option: {argument}"));
+            }
+            _ => return Err(format!("unknown status option: {argument}")),
+        }
+    }
+    Ok(options)
+}
+
+fn print_status_json(output: &StatusOutput) -> Result<(), String> {
+    println!(
+        "{}",
+        serde_json::to_string_pretty(output).map_err(|error| error.to_string())?
+    );
+    Ok(())
+}
+
+fn status(options: StatusOptions) -> Result<bool, String> {
     let Some(node) = quantum_hidraw_node()? else {
         return Ok(false);
     };
-    println!("matched JBL Quantum 810 HID node: {}", node.display());
-    println!("access mode: read-only HID GET_FEATURE (no SET_FEATURE/output reports)");
-    if dry_run {
+    if !options.json {
+        println!("matched JBL Quantum 810 HID node: {}", node.display());
+        println!("access mode: read-only HID GET_FEATURE (no SET_FEATURE/output reports)");
+    }
+    if options.dry_run {
         let metadata =
             fs::metadata(&node).map_err(|error| format!("{}: {error}", node.display()))?;
         if !metadata.file_type().is_char_device() {
             return Err(format!("refusing non-character device: {}", node.display()));
         }
-        println!(
-            "dry run: would read Feature Report 0x{BATTERY_FEATURE_REPORT_ID:02x} ({BATTERY_FEATURE_REPORT_LEN} bytes); no device opened"
-        );
+        if options.json {
+            print_status_json(&StatusOutput {
+                schema: 1,
+                device: "0ecb:2069",
+                hidraw: node.display().to_string(),
+                access: "hid-get-feature-read-only",
+                dry_run: true,
+                battery_percent: None,
+                raw_feature: None,
+            })?;
+        } else {
+            println!(
+                "dry run: would read Feature Report 0x{BATTERY_FEATURE_REPORT_ID:02x} ({BATTERY_FEATURE_REPORT_LEN} bytes); no device opened"
+            );
+        }
         return Ok(true);
     }
     let report = read_feature_report_read_only(
@@ -605,14 +671,27 @@ fn status(dry_run: bool) -> Result<bool, String> {
         BATTERY_FEATURE_REPORT_LEN,
     )?;
     let battery = hid::battery_from_feature(&report)?;
-    println!("battery: {battery}%");
-    println!("raw feature: {}", format_hid_report(&report));
+    let raw_feature = format_hid_report(&report);
+    if options.json {
+        print_status_json(&StatusOutput {
+            schema: 1,
+            device: "0ecb:2069",
+            hidraw: node.display().to_string(),
+            access: "hid-get-feature-read-only",
+            dry_run: false,
+            battery_percent: Some(battery),
+            raw_feature: Some(raw_feature),
+        })?;
+    } else {
+        println!("battery: {battery}%");
+        println!("raw feature: {raw_feature}");
+    }
     Ok(true)
 }
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|export --format json>"
     );
     eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
 }
@@ -625,7 +704,7 @@ fn main() {
         "inspect" => inspect(),
         "hid-descriptor" => hid_descriptor(),
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
-        "status" => status(args.next().as_deref() == Some("--dry-run")),
+        "status" => parse_status_options(args).and_then(status),
         "export"
             if args.next().as_deref() == Some("--format")
                 && args.next().as_deref() == Some("json") =>
@@ -701,5 +780,39 @@ mod tests {
     #[test]
     fn builds_linux_get_feature_ioctl_number() {
         assert_eq!(hidiocgfeature(2), 0xc002_4807);
+    }
+
+    #[test]
+    fn parses_status_options_in_any_order() {
+        assert_eq!(
+            parse_status_options(
+                ["--format", "json", "--dry-run"]
+                    .into_iter()
+                    .map(String::from)
+            ),
+            Ok(StatusOptions {
+                dry_run: true,
+                json: true
+            })
+        );
+        assert!(parse_status_options(["--format"].into_iter().map(String::from)).is_err());
+        assert!(parse_status_options(["--xml"].into_iter().map(String::from)).is_err());
+    }
+
+    #[test]
+    fn serializes_versioned_status_json() {
+        let output = StatusOutput {
+            schema: 1,
+            device: "0ecb:2069",
+            hidraw: "/dev/hidraw7".into(),
+            access: "hid-get-feature-read-only",
+            dry_run: false,
+            battery_percent: Some(60),
+            raw_feature: Some("49 3c".into()),
+        };
+        let json = serde_json::to_value(output).unwrap();
+        assert_eq!(json["schema"], 1);
+        assert_eq!(json["battery_percent"], 60);
+        assert_eq!(json["raw_feature"], "49 3c");
     }
 }

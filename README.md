@@ -66,6 +66,7 @@ cargo run -- inspect
 cargo run -- hid-descriptor
 cargo run -- monitor --dry-run
 cargo run -- status --dry-run
+cargo run -- status --format json
 cargo run -- export --format json
 ```
 
@@ -118,6 +119,11 @@ are appended as annotations while the original bytes remain visible.
 `HIDIOCGFEATURE` read for Report `0x49`, then validates and prints battery
 percentage. Hardware validation returned `49 3c` (60%). The code contains no
 SET_FEATURE or output-report path.
+
+`status --format json` performs the same single allowlisted read and emits a
+versioned object suitable for scripts and desktop widgets. It can be combined
+with `--dry-run`; in that mode the battery fields are `null` and the device is
+not opened.
 
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
