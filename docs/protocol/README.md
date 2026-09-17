@@ -9,6 +9,8 @@ Current consolidated mappings:
 - [`lighting.md`](lighting.md): lighting state, zones, segments, RGB, and known
   effect identifiers.
 - [`microphone.md`](microphone.md): device versus host-side microphone controls.
+- [`ambient-control.md`](ambient-control.md): ANC and TalkThru command/confirmation
+  mapping.
 
 Use `evidence-ledger.md` to index experiments and sanitized artifacts. Keep
 raw captures outside Git in `captures/`. Protocol documents must distinguish:
