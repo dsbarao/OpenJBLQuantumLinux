@@ -393,10 +393,8 @@ PlasmoidItem {
         iface: "org.openjblquantum.State"
         enabled: true
 
-        function onReceivedSignal(message) {
-            if (message.member === "Changed") {
-                root.refresh()
-            }
+        function dbusChanged() {
+            root.refresh()
         }
     }
 
