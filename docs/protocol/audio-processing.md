@@ -15,5 +15,9 @@ or another host DSP layer rather than vendor USB writes.
 Disabling and re-enabling spatial audio with DTS Headphone:X v2.0 selected
 generated no USB traffic (EVT-035). The enable switch controls a host-side
 spatial-processing chain; the headset receives the resulting audio stream and
-does not store this state. Selection between DTS and Quantum Spatial remains to
-be tested separately.
+does not store this state.
+
+Selecting Quantum Spatial from DTS, changing room size from large to medium to
+small, and changing head diameter from 25 to 20 to 15 cm also generated no USB
+traffic (EVT-036). Mode selection and personalization geometry are therefore
+host-side DSP parameters as well.
