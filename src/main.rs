@@ -6,12 +6,15 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 
 mod hid;
+mod state;
 
 const USB_ROOT: &str = "/sys/bus/usb/devices";
 const JBL_VENDOR_ID: &str = "0ecb";
@@ -188,6 +191,13 @@ struct StatusOutput {
     battery_percent: Option<u8>,
     charging: Option<bool>,
     raw_feature: Option<String>,
+    headset_connected: Option<bool>,
+    ambient_mode: Option<String>,
+    microphone: Option<String>,
+    lighting_enabled: Option<bool>,
+    game_chat_value: Option<u8>,
+    bluetooth: Option<String>,
+    sidetone_level: Option<String>,
 }
 
 fn read_trimmed(path: impl AsRef<Path>) -> Option<String> {
@@ -607,6 +617,48 @@ fn monitor(dry_run: bool) -> Result<bool, String> {
     }
 }
 
+fn daemon() -> Result<bool, String> {
+    let mut runtime = state::load().unwrap_or_default();
+    loop {
+        let Some(node) = quantum_hidraw_node()? else {
+            runtime.headset_connected = Some(false);
+            state::save(&mut runtime)?;
+            thread::sleep(Duration::from_secs(2));
+            continue;
+        };
+
+        if let Ok((battery, _)) = query_battery(&node) {
+            runtime.battery_percent = Some(battery);
+        }
+        state::save(&mut runtime)?;
+
+        let mut device = match fs::File::open(&node) {
+            Ok(device) => device,
+            Err(error) => {
+                eprintln!("{}: {error}; retrying", node.display());
+                thread::sleep(Duration::from_secs(2));
+                continue;
+            }
+        };
+        let mut buffer = [0_u8; 64];
+        loop {
+            match device.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(count) => {
+                    if runtime.apply_input(&buffer[..count]) {
+                        state::save(&mut runtime)?;
+                    }
+                }
+                Err(error) => {
+                    eprintln!("{}: {error}; reconnecting", node.display());
+                    break;
+                }
+            }
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+}
+
 fn read_feature_report_read_only(
     node: &Path,
     report_id: u8,
@@ -750,6 +802,7 @@ fn set_control(command: SetCommand) -> Result<bool, String> {
         return Ok(false);
     };
     set_feature_report_allowlisted(&node, &command.report)?;
+    state::update_control(command.feature, command.value)?;
     println!("{} set to {}", command.feature, command.value);
     Ok(true)
 }
@@ -826,6 +879,13 @@ fn status(options: StatusOptions) -> Result<bool, String> {
                 battery_percent: None,
                 charging: None,
                 raw_feature: None,
+                headset_connected: None,
+                ambient_mode: None,
+                microphone: None,
+                lighting_enabled: None,
+                game_chat_value: None,
+                bluetooth: None,
+                sidetone_level: None,
             })?;
         } else {
             println!(
@@ -836,6 +896,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
     }
     let (battery, raw_feature) = query_battery(&node)?;
     let charging = charging_usb_connected().map_err(|error| error.to_string())?;
+    let cached = state::load().unwrap_or_default();
     if options.json {
         print_status_json(&StatusOutput {
             schema: 1,
@@ -846,6 +907,13 @@ fn status(options: StatusOptions) -> Result<bool, String> {
             battery_percent: Some(battery),
             charging: Some(charging),
             raw_feature: Some(raw_feature),
+            headset_connected: cached.headset_connected,
+            ambient_mode: cached.ambient_mode,
+            microphone: cached.microphone,
+            lighting_enabled: cached.lighting_enabled,
+            game_chat_value: cached.game_chat_value,
+            bluetooth: cached.bluetooth,
+            sidetone_level: cached.sidetone_level,
         })?;
     } else {
         println!("battery: {battery}%");
@@ -912,7 +980,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("set permits only confirmed two-byte Feature Reports from the built-in allowlist");
 }
@@ -925,6 +993,7 @@ fn main() {
         "inspect" => inspect(),
         "hid-descriptor" => hid_descriptor(),
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
+        "daemon" => daemon(),
         "status" => parse_status_options(args).and_then(status),
         "probe-status" => probe_status(),
         "set" => parse_set_command(args).and_then(set_control),
@@ -1047,6 +1116,13 @@ mod tests {
             battery_percent: Some(60),
             charging: Some(true),
             raw_feature: Some("49 3c".into()),
+            headset_connected: Some(true),
+            ambient_mode: Some("anc".into()),
+            microphone: Some("active".into()),
+            lighting_enabled: Some(true),
+            game_chat_value: Some(8),
+            bluetooth: Some("connected".into()),
+            sidetone_level: Some("low".into()),
         };
         let json = serde_json::to_value(output).unwrap();
         assert_eq!(json["schema"], 1);

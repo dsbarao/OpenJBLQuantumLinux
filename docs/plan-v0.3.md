@@ -8,15 +8,17 @@ all USB writes strictly allowlisted.
 - [x] Test read-only GET_FEATURE snapshots for ambient mode (`0x46`), global
   lighting (`0x4b`), and sidetone (`0x5d`). The device returned the battery
   report instead, so these controls cannot be queried as initial snapshots.
-- Maintain control state from confirmed HID input events and successful
+- [x] Maintain control state from confirmed HID input events and successful
   allowlisted commands, using `unknown` until evidence exists.
+- [x] Expose cached confirmed state through `status --format json`.
+- [x] Highlight confirmed selections in the Plasma widget.
 - Add confirmed values to the versioned `status --format json` output.
 - Show the current selection in the Plasma widget.
 - Preserve `unknown` rather than guessing when a state cannot be read.
 
 ## 2. React to hardware and USB events
 
-- Observe confirmed Input Reports for headset power, ambient mode, microphone,
+- [x] Observe confirmed Input Reports for headset power, ambient mode, microphone,
   lighting, battery, and Game/Chat balance.
 - Detect dongle and USB-C hotplug events.
 - Update the widget immediately instead of depending only on polling.

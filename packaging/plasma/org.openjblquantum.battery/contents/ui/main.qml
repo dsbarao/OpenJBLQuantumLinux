@@ -17,6 +17,9 @@ PlasmoidItem {
     property string errorMessage: ""
     property string actionMessage: ""
     property string openSection: ""
+    property string ambientMode: "unknown"
+    property string sidetoneLevel: "unknown"
+    property var lightingEnabled: null
     property bool updating: false
     readonly property color batteryColor: charging
         ? "#22d3ee"
@@ -63,6 +66,9 @@ PlasmoidItem {
             batteryPercent = percentage
             charging = result.charging === true
             rawFeature = String(result.raw_feature ?? "")
+            ambientMode = String(result.ambient_mode ?? "unknown")
+            sidetoneLevel = String(result.sidetone_level ?? "unknown")
+            lightingEnabled = result.lighting_enabled ?? null
             errorMessage = ""
         } catch (error) {
             batteryPercent = -1
@@ -185,8 +191,8 @@ PlasmoidItem {
             Layout.alignment: Qt.AlignHCenter
             spacing: Kirigami.Units.smallSpacing
 
-            PlasmaComponents.Button {
-                text: "Ambiente"
+                PlasmaComponents.Button {
+                    text: "Ambiente"
                 icon.name: "audio-headphones-symbolic"
                 checkable: true
                 checked: root.openSection === "ambient"
@@ -233,28 +239,38 @@ PlasmoidItem {
                     font.bold: true
                 }
 
+                PlasmaComponents.Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: root.openSection === "ambient"
+                        ? root.ambientMode === "unknown" ? "Estado desconhecido" : `Atual: ${root.ambientMode}`
+                        : root.openSection === "lighting"
+                            ? root.lightingEnabled === null ? "Estado desconhecido" : root.lightingEnabled ? "Atual: ligada" : "Atual: desligada"
+                            : root.sidetoneLevel === "unknown" ? "Estado desconhecido" : `Atual: ${root.sidetoneLevel}`
+                    opacity: 0.7
+                }
+
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "ambient"
-                    PlasmaComponents.Button { text: "Desligado"; onClicked: root.runControl("ambient", "off") }
-                    PlasmaComponents.Button { text: "ANC"; onClicked: root.runControl("ambient", "anc") }
-                    PlasmaComponents.Button { text: "TalkThru"; onClicked: root.runControl("ambient", "talkthru") }
+                    PlasmaComponents.Button { text: "Desligado"; checkable: true; checked: root.ambientMode === "off"; onClicked: root.runControl("ambient", "off") }
+                    PlasmaComponents.Button { text: "ANC"; checkable: true; checked: root.ambientMode === "anc"; onClicked: root.runControl("ambient", "anc") }
+                    PlasmaComponents.Button { text: "TalkThru"; checkable: true; checked: root.ambientMode === "talkthru"; onClicked: root.runControl("ambient", "talkthru") }
                 }
 
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
-                    PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; onClicked: root.runControl("lighting", "on") }
-                    PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; onClicked: root.runControl("lighting", "off") }
+                    PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; checkable: true; checked: root.lightingEnabled === true; onClicked: root.runControl("lighting", "on") }
+                    PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; checkable: true; checked: root.lightingEnabled === false; onClicked: root.runControl("lighting", "off") }
                 }
 
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "sidetone"
-                    PlasmaComponents.Button { text: "Off"; onClicked: root.runControl("sidetone", "off") }
-                    PlasmaComponents.Button { text: "Baixo"; onClicked: root.runControl("sidetone", "low") }
-                    PlasmaComponents.Button { text: "Médio"; onClicked: root.runControl("sidetone", "medium") }
-                    PlasmaComponents.Button { text: "Alto"; onClicked: root.runControl("sidetone", "high") }
+                    PlasmaComponents.Button { text: "Off"; checkable: true; checked: root.sidetoneLevel === "off"; onClicked: root.runControl("sidetone", "off") }
+                    PlasmaComponents.Button { text: "Baixo"; checkable: true; checked: root.sidetoneLevel === "low"; onClicked: root.runControl("sidetone", "low") }
+                    PlasmaComponents.Button { text: "Médio"; checkable: true; checked: root.sidetoneLevel === "medium"; onClicked: root.runControl("sidetone", "medium") }
+                    PlasmaComponents.Button { text: "Alto"; checkable: true; checked: root.sidetoneLevel === "high"; onClicked: root.runControl("sidetone", "high") }
                 }
             }
         }
@@ -298,6 +314,7 @@ PlasmoidItem {
                 if (exitCode === 0) {
                     root.errorMessage = ""
                     root.actionMessage = "Configuração aplicada"
+                    refreshAfterControl.restart()
                 } else {
                     root.errorMessage = stderr || "Falha ao aplicar configuração"
                     root.actionMessage = root.errorMessage
@@ -307,6 +324,13 @@ PlasmoidItem {
             root.updating = false
             root.applyResult(data)
         }
+    }
+
+    Timer {
+        id: refreshAfterControl
+        interval: 300
+        repeat: false
+        onTriggered: root.refresh()
     }
 
     Timer {

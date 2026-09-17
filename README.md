@@ -173,6 +173,19 @@ mode (off/ANC/TalkThru), global lighting (on/off), and hardware sidetone
 Reports documented under `docs/protocol/`; arbitrary reports are rejected by
 the CLI parser.
 
+For real-time state tracking, install and enable the user service:
+
+```bash
+install -Dm644 packaging/systemd/openjblquantum-state.service \
+  "$HOME/.config/systemd/user/openjblquantum-state.service"
+systemctl --user daemon-reload
+systemctl --user enable --now openjblquantum-state.service
+```
+
+The service opens the confirmed Quantum 810 hidraw node read-only, records only
+known Input Reports, and writes a versioned cache under `XDG_RUNTIME_DIR`.
+Unknown state remains `null`; it is never guessed.
+
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
 
