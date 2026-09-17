@@ -4,10 +4,11 @@ Status: initial controlled captures in progress.
 
 ## Host-side controls
 
-QuantumENGINE's DRC toggle (EVT-028) and noise-reduction levels (EVT-030)
-produce no USB traffic. They are host-side audio-processing features and should
-not be implemented as device protocol writes. A future Linux implementation
-can use PipeWire or another DSP layer.
+QuantumENGINE's DRC toggle (EVT-028), noise-reduction levels (EVT-030), and
+microphone gain slider (EVT-031) produce no USB traffic. They are host-side
+audio controls and should not be implemented as device protocol writes. A
+future Linux implementation can use PipeWire or another DSP layer. The gain
+slider should map to capture-source volume rather than a vendor command.
 
 ## Device controls
 
@@ -28,10 +29,7 @@ not frequency bands.
 
 ### Remaining controls
 
-The following QuantumENGINE controls remain to be classified:
-
-- microphone gain;
-- microphone equalizer.
+The microphone equalizer remains to be classified.
 
 Physical microphone state is already confirmed on Input Report `0x06`:
 `00` muted and `01` active.
