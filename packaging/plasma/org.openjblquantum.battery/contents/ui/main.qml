@@ -260,10 +260,19 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 38
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 25
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 38
+        Layout.preferredHeight: Kirigami.Units.gridUnit * (root.openSection === "lighting"
+            ? 44 : root.openSection.length > 0 ? 32 : 25)
         spacing: Kirigami.Units.smallSpacing
+
+        PlasmaComponents.Label {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.maximumHeight: implicitHeight
+            text: "JBL Quantum 810"
+            font.bold: true
+            font.pixelSize: Kirigami.Units.gridUnit * 1.05
+        }
 
         Image {
             source: root.equipmentImage
@@ -271,12 +280,15 @@ PlasmoidItem {
             smooth: true
             mipmap: true
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: Kirigami.Units.gridUnit * 6
-            Layout.preferredHeight: Kirigami.Units.gridUnit * 6
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 8
+            Layout.preferredHeight: Kirigami.Units.gridUnit * 8
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 8
+            Layout.maximumHeight: Kirigami.Units.gridUnit * 8
         }
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignHCenter
+            Layout.maximumHeight: implicitHeight
             text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "Indisponível"
             color: root.batteryColor
             font.pixelSize: Kirigami.Units.gridUnit * 1.7
@@ -285,6 +297,7 @@ PlasmoidItem {
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
+            Layout.maximumHeight: implicitHeight
             spacing: Kirigami.Units.largeSpacing
 
             PlasmaComponents.Label {
@@ -326,6 +339,7 @@ PlasmoidItem {
 
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.maximumHeight: implicitHeight
             spacing: Kirigami.Units.smallSpacing
 
             RowLayout {
@@ -383,6 +397,7 @@ PlasmoidItem {
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
+            Layout.maximumHeight: implicitHeight
             spacing: Kirigami.Units.smallSpacing
             enabled: root.deviceAvailable && !root.controlBusy
 
