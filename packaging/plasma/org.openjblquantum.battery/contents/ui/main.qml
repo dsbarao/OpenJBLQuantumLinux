@@ -25,6 +25,8 @@ PlasmoidItem {
     property var lightingEnabled: null
     property int gameChatValue: -1
     property bool updating: false
+    readonly property bool deviceAvailable: batteryPercent >= 0
+    readonly property bool daemonAvailable: daemonWatcher.registered
     readonly property color batteryColor: headsetConnected === false && !charging
         ? Kirigami.Theme.disabledTextColor
         : charging
@@ -69,6 +71,17 @@ PlasmoidItem {
         return "Aguardando estado"
     }
 
+    function friendlyError(message) {
+        const normalized = message.toLowerCase()
+        if (normalized.includes("not found") || normalized.includes("não encontrado"))
+            return "Dongle USB desconectado"
+        if (normalized.includes("permission denied")
+                || normalized.includes("permissão negada")
+                || normalized.includes("operation not permitted"))
+            return "Sem permissão para acessar o headset"
+        return "Não foi possível ler o headset"
+    }
+
     function applyResult(data) {
         const exitCode = Number(data["exit code"] ?? -1)
         const stdout = String(data.stdout ?? "").trim()
@@ -79,7 +92,7 @@ PlasmoidItem {
             headsetConnected = false
             microphoneState = "unknown"
             ambientMode = "unknown"
-            errorMessage = stderr || "Headset não encontrado"
+            errorMessage = friendlyError(stderr)
             return
         }
         try {
@@ -302,6 +315,7 @@ PlasmoidItem {
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: Kirigami.Units.smallSpacing
+            enabled: root.deviceAvailable
 
                 PlasmaComponents.Button {
                     text: "Ambiente"
@@ -364,6 +378,7 @@ PlasmoidItem {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "ambient"
+                    enabled: root.deviceAvailable
                     PlasmaComponents.Button { text: "Desligado"; checkable: true; checked: root.ambientMode === "off"; onClicked: root.runControl("ambient", "off") }
                     PlasmaComponents.Button { text: "ANC"; checkable: true; checked: root.ambientMode === "anc"; onClicked: root.runControl("ambient", "anc") }
                     PlasmaComponents.Button { text: "TalkThru"; checkable: true; checked: root.ambientMode === "talkthru"; onClicked: root.runControl("ambient", "talkthru") }
@@ -372,6 +387,7 @@ PlasmoidItem {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
+                    enabled: root.deviceAvailable
                     PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; checkable: true; checked: root.lightingEnabled === true; onClicked: root.runControl("lighting", "on") }
                     PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; checkable: true; checked: root.lightingEnabled === false; onClicked: root.runControl("lighting", "off") }
                 }
@@ -379,6 +395,7 @@ PlasmoidItem {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "sidetone"
+                    enabled: root.deviceAvailable
                     PlasmaComponents.Button { text: "Off"; checkable: true; checked: root.sidetoneLevel === "off"; onClicked: root.runControl("sidetone", "off") }
                     PlasmaComponents.Button { text: "Baixo"; checkable: true; checked: root.sidetoneLevel === "low"; onClicked: root.runControl("sidetone", "low") }
                     PlasmaComponents.Button { text: "Médio"; checkable: true; checked: root.sidetoneLevel === "medium"; onClicked: root.runControl("sidetone", "medium") }
@@ -397,11 +414,16 @@ PlasmoidItem {
 
         PlasmaComponents.Label {
             Layout.fillWidth: true
-            visible: root.errorMessage.length > 0
+            visible: root.errorMessage.length > 0 || !root.daemonAvailable
             horizontalAlignment: Text.AlignHCenter
-            text: root.errorMessage
+            text: root.errorMessage.length > 0
+                ? root.errorMessage
+                : "Monitor em tempo real inativo"
+            color: root.errorMessage.length > 0
+                ? Kirigami.Theme.negativeTextColor
+                : Kirigami.Theme.neutralTextColor
             wrapMode: Text.Wrap
-            opacity: 0.7
+            opacity: 0.85
         }
     }
 
@@ -420,7 +442,7 @@ PlasmoidItem {
                     clearAction.restart()
                     refreshAfterControl.restart()
                 } else {
-                    root.errorMessage = stderr || "Falha ao aplicar configuração"
+                    root.errorMessage = root.friendlyError(stderr)
                     root.actionMessage = root.errorMessage
                 }
                 return
@@ -439,6 +461,16 @@ PlasmoidItem {
 
         function dbusChanged() {
             root.refresh()
+        }
+    }
+
+    DBus.ServiceWatcher {
+        id: daemonWatcher
+        busType: DBus.BusType.Session
+        watchedService: "org.openjblquantum.State"
+
+        onRegisteredChanged: {
+            if (registered) root.refresh()
         }
     }
 
