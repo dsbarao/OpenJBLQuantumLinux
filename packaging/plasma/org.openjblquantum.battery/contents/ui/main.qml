@@ -12,6 +12,7 @@ PlasmoidItem {
     id: root
 
     readonly property string command: "/bin/sh -lc \"$HOME/.cargo/bin/openjblquantum status --format json\""
+    readonly property url equipmentImage: Qt.resolvedUrl("../images/jbl-quantum-810.png")
     property int batteryPercent: -1
     property bool charging: false
     property string rawFeature: ""
@@ -37,7 +38,7 @@ PlasmoidItem {
             ? "#35c759"
             : batteryPercent >= 30 ? "#f5c542" : "#ff453a"
 
-    Plasmoid.icon: "audio-headphones"
+    Plasmoid.icon: equipmentImage
     Plasmoid.status: batteryPercent >= 0 ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
 
     function refresh() {
@@ -161,11 +162,14 @@ PlasmoidItem {
                         opacity: 0.85
                     }
 
-                    Kirigami.Icon {
+                    Image {
                         anchors.centerIn: parent
-                        width: 11
-                        height: 11
-                        source: "audio-headphones"
+                        width: 13
+                        height: 13
+                        source: root.equipmentImage
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
                     }
 
                     PlasmaComponents.Label {
@@ -202,8 +206,11 @@ PlasmoidItem {
         Layout.preferredHeight: Kirigami.Units.gridUnit * 21
         spacing: Kirigami.Units.smallSpacing
 
-        Kirigami.Icon {
-            source: "audio-headphones"
+        Image {
+            source: root.equipmentImage
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            mipmap: true
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Kirigami.Units.iconSizes.large
             Layout.preferredHeight: Kirigami.Units.iconSizes.large
