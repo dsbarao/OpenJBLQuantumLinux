@@ -6,6 +6,7 @@ import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.plasma.plasmoid
+import org.kde.plasma.workspace.dbus as DBus
 
 PlasmoidItem {
     id: root
@@ -385,6 +386,20 @@ PlasmoidItem {
         }
     }
 
+    DBus.SignalWatcher {
+        busType: DBus.BusType.Session
+        service: ""
+        path: "/org/openjblquantum/State"
+        iface: "org.openjblquantum.State"
+        enabled: true
+
+        function onReceivedSignal(message) {
+            if (message.member === "Changed") {
+                root.refresh()
+            }
+        }
+    }
+
     Timer {
         id: refreshAfterControl
         interval: 300
@@ -393,7 +408,7 @@ PlasmoidItem {
     }
 
     Timer {
-        interval: 5000
+        interval: 60000
         repeat: true
         running: true
         triggeredOnStart: true

@@ -28,6 +28,8 @@ First usable read-only Linux release for the JBL Quantum 810:
   state to the widget; successful allowlisted commands also update the cache;
 - visualize the physical Game/Chat dial as a live Chat-to-Game balance bar in
   the Plasma widget;
+- replace five-second widget polling with event-driven D-Bus refreshes from the
+  state service, retaining a low-frequency one-minute fallback;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

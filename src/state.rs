@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -98,7 +99,22 @@ pub fn save(state: &mut RuntimeState) -> Result<(), String> {
     let temporary = path.with_extension(format!("tmp.{}", std::process::id()));
     let bytes = serde_json::to_vec_pretty(state).map_err(|error| error.to_string())?;
     fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
-    fs::rename(&temporary, &path).map_err(|error| error.to_string())
+    fs::rename(&temporary, &path).map_err(|error| error.to_string())?;
+    emit_changed_signal();
+    Ok(())
+}
+
+fn emit_changed_signal() {
+    let _ = Command::new("gdbus")
+        .args([
+            "emit",
+            "--session",
+            "--object-path",
+            "/org/openjblquantum/State",
+            "--signal",
+            "org.openjblquantum.State.Changed",
+        ])
+        .status();
 }
 
 pub fn update_control(feature: &str, value: &str) -> Result<(), String> {
