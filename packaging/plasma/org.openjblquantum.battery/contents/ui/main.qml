@@ -28,7 +28,7 @@ PlasmoidItem {
     property bool updating: false
     readonly property bool deviceAvailable: batteryPercent >= 0
     readonly property bool daemonAvailable: daemonWatcher.registered
-    readonly property color batteryColor: headsetConnected === false && !charging
+    readonly property color batteryColor: headsetConnected === false
         ? Kirigami.Theme.disabledTextColor
         : charging
         ? "#22d3ee"
@@ -176,7 +176,7 @@ PlasmoidItem {
                         anchors.rightMargin: 1
                         anchors.topMargin: -3
                         text: "⚡"
-                        color: "white"
+                        color: "#f5c542"
                         font.pixelSize: 8
                         font.bold: true
                     }
@@ -412,7 +412,7 @@ PlasmoidItem {
             Layout.alignment: Qt.AlignHCenter
             visible: root.charging
             text: "⚡ Carregando"
-            color: root.batteryColor
+            color: "#f5c542"
             font.bold: true
         }
 
