@@ -7,6 +7,8 @@
 - debounce USB-C topology changes before updating charging state;
 - keep `Carregando` or `Carregado` visible for the entire time the cable is
   confirmed present, including while the headset is powered off.
+- reserve a fixed status-message row so color changes do not move or resize
+  the popup while showing `Aplicando` and `Configuração aplicada`.
 
 ## 0.1.0 — 2026-09-17
 
