@@ -22,5 +22,10 @@ Hardware validation on CachyOS returned `49 3c`, correctly decoded as 60%.
 This is the third independently observed battery level after 90% and 85% in
 the controlled captures.
 
+The installed release build was also validated with both human-readable and
+schema-1 JSON output. JSON dry-run returned `null` status fields without opening
+the device; the live JSON query returned `battery_percent: 60` and
+`raw_feature: "49 3c"`.
+
 Device writes, firmware operations, resets, driver detach, and guessed commands
 remain out of scope.
