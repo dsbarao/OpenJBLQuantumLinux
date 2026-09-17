@@ -131,6 +131,10 @@ desktop notification service (`notify-send`). At 20% or below the notification
 uses critical urgency. `notify --dry-run` does not open the device or display a
 notification.
 
+`show` opens a visible KDE dialog with the battery percentage. The application
+launcher uses this command so clicking it produces a window instead of a
+transient notification.
+
 An optional KDE application launcher is included. Install it for the current
 user after installing the CLI:
 

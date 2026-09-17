@@ -720,9 +720,35 @@ fn notify(dry_run: bool) -> Result<bool, String> {
     Ok(true)
 }
 
+fn show(dry_run: bool) -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    if dry_run {
+        println!(
+            "dry run: would read Feature Report 0x{BATTERY_FEATURE_REPORT_ID:02x} and open a KDE dialog; no device opened"
+        );
+        return Ok(true);
+    }
+    let (battery, _) = query_battery(&node)?;
+    let process = Command::new("kdialog")
+        .args([
+            "--title",
+            "JBL Quantum 810",
+            "--msgbox",
+            &format!("Bateria: {battery}%"),
+        ])
+        .status()
+        .map_err(|error| format!("could not start kdialog: {error}"))?;
+    if !process.success() {
+        return Err(format!("kdialog exited with {process}"));
+    }
+    Ok(true)
+}
+
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|notify [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
 }
@@ -737,6 +763,7 @@ fn main() {
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
         "status" => parse_status_options(args).and_then(status),
         "notify" => notify(args.next().as_deref() == Some("--dry-run")),
+        "show" => show(args.next().as_deref() == Some("--dry-run")),
         "export"
             if args.next().as_deref() == Some("--format")
                 && args.next().as_deref() == Some("json") =>
