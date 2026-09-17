@@ -148,10 +148,21 @@ It then appears in the application menu as **JBL Quantum 810 Battery**.
 ### Plasma 6 panel widget
 
 The repository also includes a native Plasma 6 widget with a compact panel
-indicator. It refreshes every five seconds and shows the percentage in its
-detail view when clicked. While the USB-C charging connection (`0ecb:206a`) is
-present, the widget changes to cyan and displays a lightning indicator. Install
-it for the current user:
+indicator. It receives state-change signals from the user daemon and retains a
+low-frequency fallback refresh. While the USB-C charging connection
+(`0ecb:206a`) is present, the widget changes to cyan and displays a lightning
+indicator.
+
+The CLI, widget, launcher, and user service can be validated and installed
+together with the idempotent helper. `--check` makes no changes:
+
+```bash
+tools/install-user.sh --check
+tools/install-user.sh
+```
+
+The helper does not install the privileged udev rule and does not restart the
+Plasma shell. For manual widget installation, use:
 
 ```bash
 kpackagetool6 --type Plasma/Applet --install \
