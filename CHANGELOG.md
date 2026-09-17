@@ -12,6 +12,7 @@ First usable read-only Linux release for the JBL Quantum 810:
 - emit human-readable and schema-1 JSON battery status;
 - display battery percentage through a KDE desktop notification;
 - include an optional KDE application launcher;
+- include a Plasma 6 panel widget with one-minute refresh and manual update;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

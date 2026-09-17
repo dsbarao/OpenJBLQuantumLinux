@@ -145,6 +145,28 @@ install -Dm644 packaging/kde/openjblquantum-battery.desktop \
 
 It then appears in the application menu as **JBL Quantum 810 Battery**.
 
+### Plasma 6 panel widget
+
+The repository also includes a native Plasma 6 widget that shows the battery
+percentage directly in the panel, refreshes once per minute, and opens a detail
+view when clicked. Install it for the current user:
+
+```bash
+kpackagetool6 --type Plasma/Applet --install \
+  packaging/plasma/org.openjblquantum.battery
+```
+
+For later development updates, use:
+
+```bash
+kpackagetool6 --type Plasma/Applet --upgrade \
+  packaging/plasma/org.openjblquantum.battery
+```
+
+Then enter Plasma edit mode, choose **Add Widgets**, search for
+**JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
+`openjblquantum status --format json`; it contains no device-write path.
+
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
 

@@ -1,0 +1,20 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Email": "dsbarao@gmail.com",
+        "Name": "Daniel Barão"
+      }
+    ],
+    "Category": "System Information",
+    "Description": "Shows the JBL Quantum 810 battery level using OpenJBLQuantum",
+    "Icon": "audio-headphones",
+    "Id": "org.openjblquantum.battery",
+    "License": "MIT",
+    "Name": "JBL Quantum 810 Battery",
+    "Version": "0.1.0",
+    "Website": "https://github.com/openjblquantum/openjblquantum"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0"
+}
