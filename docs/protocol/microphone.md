@@ -10,10 +10,26 @@ write. A future Linux implementation can use PipeWire or another DSP layer.
 
 ## Device controls
 
+### Sidetone
+
+Feature Report `0x5d` controls the hardware sidetone level:
+
+```text
+5d 00  # off
+5d 01  # low
+5d 02  # medium
+5d 03  # high
+```
+
+The Portuguese QuantumENGINE UI labels the three levels `Graves`, `Médios`,
+and `Agudos`; controlled capture shows these are ordinal sidetone intensities,
+not frequency bands.
+
+### Remaining controls
+
 The following QuantumENGINE controls remain to be classified:
 
 - microphone gain;
-- sidetone (`Tom lateral`): off, low, medium, high;
 - noise reduction: off, low, medium, high;
 - microphone equalizer.
 
