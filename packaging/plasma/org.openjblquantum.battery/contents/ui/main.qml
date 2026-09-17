@@ -38,7 +38,7 @@ PlasmoidItem {
             ? "#35c759"
             : batteryPercent >= 30 ? "#f5c542" : "#ff453a"
 
-    Plasmoid.icon: equipmentImage
+    Plasmoid.icon: "audio-headphones"
     Plasmoid.status: batteryPercent >= 0 ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
 
     function refresh() {
@@ -162,14 +162,11 @@ PlasmoidItem {
                         opacity: 0.85
                     }
 
-                    Image {
+                    Kirigami.Icon {
                         anchors.centerIn: parent
-                        width: 13
-                        height: 13
-                        source: root.equipmentImage
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        mipmap: true
+                        width: 11
+                        height: 11
+                        source: "audio-headphones"
                     }
 
                     PlasmaComponents.Label {
@@ -212,8 +209,8 @@ PlasmoidItem {
             smooth: true
             mipmap: true
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: Kirigami.Units.iconSizes.large
-            Layout.preferredHeight: Kirigami.Units.iconSizes.large
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 6
+            Layout.preferredHeight: Kirigami.Units.gridUnit * 6
         }
 
         PlasmaComponents.Label {
