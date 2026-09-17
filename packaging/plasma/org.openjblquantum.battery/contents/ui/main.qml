@@ -259,11 +259,13 @@ PlasmoidItem {
     }
 
     fullRepresentation: ColumnLayout {
+        readonly property real requiredGridHeight: root.openSection === "lighting"
+            ? 44 : root.openSection.length > 0 ? 32 : 25
+
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 25
+        Layout.minimumHeight: Kirigami.Units.gridUnit * requiredGridHeight
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * (root.openSection === "lighting"
-            ? 44 : root.openSection.length > 0 ? 32 : 25)
+        Layout.preferredHeight: Kirigami.Units.gridUnit * requiredGridHeight
         spacing: Kirigami.Units.smallSpacing
 
         PlasmaComponents.Label {
