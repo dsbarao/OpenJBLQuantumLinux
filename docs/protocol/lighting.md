@@ -47,11 +47,13 @@ Confirmed effect identifiers:
 
 | ID | QuantumENGINE label |
 |---|---|
+| `00` | Breathing (`Respiração`) |
 | `01` | Solid |
 | `02` | Wave |
+| `03` | Glitch (`Falha`) |
 
-Breathing and Glitch have not yet been mapped. Observed five-segment profiles
-used position values `00, 02, 04, 06, 08` in segment order.
+All four effects exposed by QuantumENGINE are mapped. Observed five-segment
+profiles used position values `00, 02, 04, 06, 08` in segment order.
 
 QuantumENGINE sends complete profiles for both zones when one segment changes.
 The application's synchronization switch appears to copy/reapply zone data and
