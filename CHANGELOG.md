@@ -26,6 +26,8 @@ First usable read-only Linux release for the JBL Quantum 810:
 - add a read-only user service that caches confirmed HID events and exposes
   current ambient, lighting, microphone, battery, Bluetooth, and Game/Chat
   state to the widget; successful allowlisted commands also update the cache;
+- visualize the physical Game/Chat dial as a live Chat-to-Game balance bar in
+  the Plasma widget;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

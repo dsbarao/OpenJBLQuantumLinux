@@ -20,6 +20,7 @@ PlasmoidItem {
     property string ambientMode: "unknown"
     property string sidetoneLevel: "unknown"
     property var lightingEnabled: null
+    property int gameChatValue: -1
     property bool updating: false
     readonly property color batteryColor: charging
         ? "#22d3ee"
@@ -69,6 +70,7 @@ PlasmoidItem {
             ambientMode = String(result.ambient_mode ?? "unknown")
             sidetoneLevel = String(result.sidetone_level ?? "unknown")
             lightingEnabled = result.lighting_enabled ?? null
+            gameChatValue = result.game_chat_value === null ? -1 : Number(result.game_chat_value)
             errorMessage = ""
         } catch (error) {
             batteryPercent = -1
@@ -156,9 +158,9 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 16
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 19
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 18
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 21
         spacing: Kirigami.Units.largeSpacing
 
         Kirigami.Icon {
@@ -185,6 +187,63 @@ PlasmoidItem {
                 ? Kirigami.Theme.negativeTextColor
                 : Kirigami.Theme.positiveTextColor
             wrapMode: Text.Wrap
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                PlasmaComponents.Label {
+                    text: "Chat"
+                    font.bold: root.gameChatValue >= 0 && root.gameChatValue < 8
+                }
+
+                Item { Layout.fillWidth: true }
+
+                PlasmaComponents.Label {
+                    text: root.gameChatValue < 0
+                        ? "Mova o dial para detectar"
+                        : root.gameChatValue === 8 ? "Centro" : `${root.gameChatValue}/16`
+                    opacity: 0.7
+                }
+
+                Item { Layout.fillWidth: true }
+
+                PlasmaComponents.Label {
+                    text: "Game"
+                    font.bold: root.gameChatValue > 8
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 16
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 6
+                    radius: 3
+                    color: Kirigami.Theme.disabledTextColor
+                    opacity: 0.35
+                }
+
+                Rectangle {
+                    visible: root.gameChatValue >= 0
+                    x: (parent.width - width) * Math.max(0, Math.min(16, root.gameChatValue)) / 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 14
+                    height: 14
+                    radius: 7
+                    color: Kirigami.Theme.highlightColor
+                    border.width: 2
+                    border.color: Kirigami.Theme.backgroundColor
+                }
+            }
         }
 
         RowLayout {
