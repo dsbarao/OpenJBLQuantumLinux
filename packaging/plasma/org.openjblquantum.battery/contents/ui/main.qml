@@ -28,16 +28,12 @@ PlasmoidItem {
     property string logoColor: "unknown"
     property string ringColor: "unknown"
     property string lightingTarget: "both"
+    property real pickerHue: 0
+    property real pickerSaturation: 1
+    property real pickerValue: 1
+    readonly property color pickerColor: Qt.hsva(pickerHue, pickerSaturation, pickerValue, 1)
     property int gameChatValue: -1
     property bool controlBusy: false
-    readonly property var lightingPresets: [
-        { "key": "blue", "color": "#0029ff" },
-        { "key": "cyan", "color": "#33ffcc" },
-        { "key": "magenta", "color": "#ff00cc" },
-        { "key": "red", "color": "#ff2020" },
-        { "key": "green", "color": "#20ff66" },
-        { "key": "white", "color": "#ffffff" }
-    ]
     property bool updating: false
     readonly property bool deviceAvailable: batteryPercent >= 0
     readonly property bool daemonAvailable: daemonWatcher.registered
@@ -68,7 +64,7 @@ PlasmoidItem {
         controlBusy = true
         clearAction.stop()
         actionMessage = "Aplicando…"
-        const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} ${value}"`
+        const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} '${value}'"`
         executable.connectSource(controlCommand)
     }
 
@@ -97,6 +93,43 @@ PlasmoidItem {
         if (lightingTarget === "logo") return "logo-color"
         if (lightingTarget === "ring") return "ring-color"
         return "color"
+    }
+
+    function normalizeColor(value) {
+        const presets = {
+            "blue": "#0029ff", "cyan": "#33ffcc", "magenta": "#ff00cc",
+            "red": "#ff2020", "green": "#20ff66", "white": "#ffffff"
+        }
+        return presets[value] ?? (/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#33ffcc")
+    }
+
+    function loadPicker() {
+        const hex = normalizeColor(selectedLightingColor())
+        const red = parseInt(hex.slice(1, 3), 16) / 255
+        const green = parseInt(hex.slice(3, 5), 16) / 255
+        const blue = parseInt(hex.slice(5, 7), 16) / 255
+        const maximum = Math.max(red, green, blue)
+        const minimum = Math.min(red, green, blue)
+        const delta = maximum - minimum
+        let hue = 0
+        if (delta > 0) {
+            if (maximum === red) hue = ((green - blue) / delta) % 6
+            else if (maximum === green) hue = (blue - red) / delta + 2
+            else hue = (red - green) / delta + 4
+            hue = ((hue / 6) + 1) % 1
+        }
+        pickerHue = hue
+        pickerSaturation = maximum === 0 ? 0 : delta / maximum
+        pickerValue = maximum
+        svCanvas.requestPaint()
+    }
+
+    function colorComponent(value) {
+        return Math.round(value * 255).toString(16).padStart(2, "0")
+    }
+
+    function pickerHex() {
+        return `#${colorComponent(pickerColor.r)}${colorComponent(pickerColor.g)}${colorComponent(pickerColor.b)}`
     }
 
     function friendlyError(message) {
@@ -228,9 +261,9 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 30
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 38
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 30
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 38
         spacing: Kirigami.Units.smallSpacing
 
         Image {
@@ -367,7 +400,10 @@ PlasmoidItem {
                 icon.name: "lightbulb"
                 checkable: true
                 checked: root.openSection === "lighting"
-                onClicked: root.openSection = checked ? "lighting" : ""
+                onClicked: {
+                    root.openSection = checked ? "lighting" : ""
+                    if (checked) root.loadPicker()
+                }
             }
 
             PlasmaComponents.Button {
@@ -432,7 +468,7 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
-                    text: "Cor sólida"
+                    text: "Cor sólida personalizada"
                     opacity: 0.7
                 }
 
@@ -445,19 +481,150 @@ PlasmoidItem {
                         text: "Ambos"
                         checkable: true
                         checked: root.lightingTarget === "both"
-                        onClicked: root.lightingTarget = "both"
+                        onClicked: {
+                            root.lightingTarget = "both"
+                            root.loadPicker()
+                        }
                     }
                     PlasmaComponents.Button {
                         text: "Logotipo"
                         checkable: true
                         checked: root.lightingTarget === "logo"
-                        onClicked: root.lightingTarget = "logo"
+                        onClicked: {
+                            root.lightingTarget = "logo"
+                            root.loadPicker()
+                        }
                     }
                     PlasmaComponents.Button {
                         text: "Anel / fundo"
                         checkable: true
                         checked: root.lightingTarget === "ring"
-                        onClicked: root.lightingTarget = "ring"
+                        onClicked: {
+                            root.lightingTarget = "ring"
+                            root.loadPicker()
+                        }
+                    }
+                }
+
+                Item {
+                    id: colorPicker
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 220
+                    Layout.preferredHeight: 220
+                    visible: root.openSection === "lighting"
+                    enabled: root.deviceAvailable && !root.controlBusy
+
+                    readonly property real centerX: width / 2
+                    readonly property real centerY: height / 2
+                    readonly property real wheelRadius: 91
+                    readonly property real ringWidth: 25
+                    readonly property real squareSize: 106
+
+                    Canvas {
+                        id: hueCanvas
+                        anchors.fill: parent
+
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            ctx.lineWidth = colorPicker.ringWidth
+                            for (let degree = 0; degree < 360; ++degree) {
+                                const start = (degree - 1) * Math.PI / 180
+                                const end = (degree + 1) * Math.PI / 180
+                                ctx.beginPath()
+                                ctx.strokeStyle = Qt.hsla(degree / 360, 1, 0.5, 1)
+                                ctx.arc(colorPicker.centerX, colorPicker.centerY,
+                                    colorPicker.wheelRadius, start, end)
+                                ctx.stroke()
+                            }
+                        }
+                    }
+
+                    Canvas {
+                        id: svCanvas
+                        width: colorPicker.squareSize
+                        height: colorPicker.squareSize
+                        anchors.centerIn: parent
+
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            ctx.fillStyle = Qt.hsva(root.pickerHue, 1, 1, 1)
+                            ctx.fillRect(0, 0, width, height)
+
+                            const saturation = ctx.createLinearGradient(0, 0, width, 0)
+                            saturation.addColorStop(0, "white")
+                            saturation.addColorStop(1, "transparent")
+                            ctx.fillStyle = saturation
+                            ctx.fillRect(0, 0, width, height)
+
+                            const value = ctx.createLinearGradient(0, 0, 0, height)
+                            value.addColorStop(0, "transparent")
+                            value.addColorStop(1, "black")
+                            ctx.fillStyle = value
+                            ctx.fillRect(0, 0, width, height)
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.CrossCursor
+
+                        function selectAt(pointerX, pointerY) {
+                            const offsetX = pointerX - colorPicker.centerX
+                            const offsetY = pointerY - colorPicker.centerY
+                            const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY)
+                            const innerRadius = colorPicker.wheelRadius - colorPicker.ringWidth / 2
+                            const outerRadius = colorPicker.wheelRadius + colorPicker.ringWidth / 2
+                            if (distance >= innerRadius && distance <= outerRadius) {
+                                root.pickerHue = (Math.atan2(offsetY, offsetX) / (2 * Math.PI) + 1) % 1
+                                svCanvas.requestPaint()
+                                return
+                            }
+
+                            const left = colorPicker.centerX - colorPicker.squareSize / 2
+                            const top = colorPicker.centerY - colorPicker.squareSize / 2
+                            if (pointerX >= left && pointerX <= left + colorPicker.squareSize
+                                    && pointerY >= top && pointerY <= top + colorPicker.squareSize) {
+                                root.pickerSaturation = Math.max(0, Math.min(1,
+                                    (pointerX - left) / colorPicker.squareSize))
+                                root.pickerValue = Math.max(0, Math.min(1,
+                                    1 - (pointerY - top) / colorPicker.squareSize))
+                            }
+                        }
+
+                        onPressed: function(mouse) { selectAt(mouse.x, mouse.y) }
+                        onPositionChanged: function(mouse) {
+                            if (pressed) selectAt(mouse.x, mouse.y)
+                        }
+                    }
+
+                    Rectangle {
+                        width: 13
+                        height: 13
+                        radius: width / 2
+                        x: colorPicker.centerX
+                            + Math.cos(root.pickerHue * 2 * Math.PI) * colorPicker.wheelRadius
+                            - width / 2
+                        y: colorPicker.centerY
+                            + Math.sin(root.pickerHue * 2 * Math.PI) * colorPicker.wheelRadius
+                            - height / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: "white"
+                    }
+
+                    Rectangle {
+                        width: 13
+                        height: 13
+                        radius: width / 2
+                        x: colorPicker.centerX - colorPicker.squareSize / 2
+                            + root.pickerSaturation * colorPicker.squareSize - width / 2
+                        y: colorPicker.centerY - colorPicker.squareSize / 2
+                            + (1 - root.pickerValue) * colorPicker.squareSize - height / 2
+                        color: "transparent"
+                        border.width: 2
+                        border.color: "white"
                     }
                 }
 
@@ -467,26 +634,24 @@ PlasmoidItem {
                     enabled: root.deviceAvailable && !root.controlBusy
                     spacing: Kirigami.Units.smallSpacing
 
-                    Repeater {
-                        model: root.lightingPresets
+                    Rectangle {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        radius: Kirigami.Units.cornerRadius
+                        color: root.pickerColor
+                        border.width: 1
+                        border.color: Kirigami.Theme.textColor
+                    }
 
-                        delegate: Rectangle {
-                            required property var modelData
-                            Layout.preferredWidth: 34
-                            Layout.preferredHeight: 28
-                            radius: Kirigami.Units.cornerRadius
-                            color: modelData.color
-                            border.width: root.selectedLightingColor() === modelData.key ? 3 : 1
-                            border.color: root.selectedLightingColor() === modelData.key
-                                ? Kirigami.Theme.highlightColor
-                                : Kirigami.Theme.textColor
+                    PlasmaComponents.Label {
+                        text: root.pickerHex().toUpperCase()
+                        font.family: "monospace"
+                    }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.runControl(root.lightingFeature(), parent.modelData.key)
-                            }
-                        }
+                    PlasmaComponents.Button {
+                        text: "Aplicar"
+                        icon.name: "dialog-ok-apply"
+                        onClicked: root.runControl(root.lightingFeature(), root.pickerHex())
                     }
                 }
 

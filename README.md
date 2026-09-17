@@ -29,7 +29,9 @@ the confirmed fixed-value controls documented under `docs/protocol/`:
 - monitor spontaneous input through a read-only hidraw handle;
 - permit only built-in ambient, lighting, solid-color, and sidetone Feature
   Reports whose fields and values were confirmed from controlled captures;
-- reject raw reports, arbitrary RGB input, resets, driver detach, firmware
+- accept strict `#RRGGBB` colors only through the confirmed complete-profile
+  generator;
+- reject raw reports, malformed RGB input, resets, driver detach, firmware
   operations, and guessed commands.
 
 Any future active experiment must first be documented with provenance,
@@ -195,12 +197,12 @@ kpackagetool6 --type Plasma/Applet --upgrade \
 Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
 allowlisted `openjblquantum` commands. Its popup includes expandable controls
-for ambient mode (off/ANC/TalkThru), global lighting (on/off), six solid-color
-presets applied together or independently to the complete Logo and Ring
+for ambient mode (off/ANC/TalkThru), global lighting (on/off), an HSV color
+picker applied together or independently to the complete Logo and Ring
 profiles, and hardware sidetone
 (off/low/medium/high). These controls send only confirmed Feature Reports
-documented under `docs/protocol/`; arbitrary reports and arbitrary RGB values
-are rejected by the CLI parser.
+documented under `docs/protocol/`; raw reports and malformed RGB values are
+rejected by the CLI parser.
 
 For real-time state tracking, install and enable the user service:
 

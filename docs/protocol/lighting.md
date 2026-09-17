@@ -1,9 +1,9 @@
 # Lighting protocol
 
 Status: mapped from controlled QuantumENGINE USBPcap captures. Global on/off
-and a deliberately small set of full-profile solid colors are implemented
-through the Linux client's strict allowlist. Arbitrary colors, partial-profile
-writes, animation selection, and OpenRGB integration remain out of scope.
+and full-profile solid RGB colors are implemented through the Linux client's
+strict parser and report generator. Partial-profile writes, animation
+selection, and OpenRGB integration remain out of scope.
 
 ## Global state
 
@@ -70,16 +70,16 @@ QuantumENGINE sends complete profiles for both zones when one segment changes.
 The application's synchronization switch appears to copy/reapply zone data and
 does not expose a distinct device-side synchronization flag.
 
-## Linux solid-color presets
+## Linux solid-color control
 
-OpenJBLQuantum applies a preset by writing a complete five-segment Solid
+OpenJBLQuantum applies a color by writing a complete five-segment Solid
 profile to both Logo and Ring, followed by global lighting enable. It never
-changes one segment in isolation. The allowlisted presets are blue (`#0029ff`),
-cyan (`#33ffcc`), magenta (`#ff00cc`), red (`#ff2020`), green (`#20ff66`), and
-white (`#ffffff`). The last three use the confirmed literal RGB fields but are
-OpenJBLQuantum convenience presets rather than captured vendor defaults.
+changes one segment in isolation. The CLI accepts only strict `#RRGGBB` values
+or the six compatibility names blue, cyan, magenta, red, green, and white.
+The widget exposes the full range through an HSV wheel and always passes a
+validated six-digit RGB value to the generator.
 
 The widget can target both zones, Logo only, or Ring only. Even for an
 independent change, OpenJBLQuantum reconstructs and sends both complete zone
 profiles from its confirmed cache. If the other zone is unknown, it refuses
-the operation and requires a synchronized preset first rather than guessing.
+the operation and requires a synchronized color first rather than guessing.

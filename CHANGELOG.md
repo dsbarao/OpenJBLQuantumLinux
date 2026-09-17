@@ -3,6 +3,8 @@
 ## 0.2.0 — unreleased
 
 - control synchronized, Logo-only, or Ring-only solid colors from the widget;
+- replace the fixed swatches with an embedded HSV wheel and saturation/value
+  field, accepting any strictly validated `#RRGGBB` color;
 - preserve both complete five-segment zone profiles whenever either zone is
   changed;
 - migrate the previous synchronized color state without guessing unknown

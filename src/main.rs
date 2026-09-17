@@ -177,7 +177,7 @@ struct StatusOptions {
 #[derive(Debug, PartialEq, Eq)]
 struct SetCommand {
     feature: &'static str,
-    value: &'static str,
+    value: String,
     reports: Vec<Vec<u8>>,
 }
 
@@ -808,6 +808,23 @@ fn preset_rgb(value: &str) -> Option<(u8, u8, u8)> {
     }
 }
 
+fn color_rgb(value: &str) -> Option<(u8, u8, u8)> {
+    if let Some(rgb) = preset_rgb(value) {
+        return Some(rgb);
+    }
+    let hex = value.strip_prefix('#')?;
+    if hex.len() != 6 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let packed = u32::from_str_radix(hex, 16).ok()?;
+    Some(((packed >> 16) as u8, (packed >> 8) as u8, packed as u8))
+}
+
+fn canonical_color(value: &str) -> Option<String> {
+    let (red, green, blue) = color_rgb(value)?;
+    Some(format!("#{red:02x}{green:02x}{blue:02x}"))
+}
+
 fn solid_zone_profile(zone: u8, color: (u8, u8, u8)) -> Vec<Vec<u8>> {
     let (red, green, blue) = color;
     let mut reports = Vec::with_capacity(6);
@@ -843,84 +860,66 @@ fn parse_set_command(mut args: impl Iterator<Item = String>) -> Result<SetComman
     let command = match (feature.as_str(), value.as_str()) {
         ("ambient", "off") => SetCommand {
             feature: "ambient",
-            value: "off",
+            value: "off".into(),
             reports: vec![vec![0x46, 0x00]],
         },
         ("ambient", "anc") => SetCommand {
             feature: "ambient",
-            value: "anc",
+            value: "anc".into(),
             reports: vec![vec![0x46, 0x01]],
         },
         ("ambient", "talkthru") => SetCommand {
             feature: "ambient",
-            value: "talkthru",
+            value: "talkthru".into(),
             reports: vec![vec![0x46, 0x02]],
         },
         ("lighting", "off") => SetCommand {
             feature: "lighting",
-            value: "off",
+            value: "off".into(),
             reports: vec![vec![0x4b, 0x00]],
         },
         ("lighting", "on") => SetCommand {
             feature: "lighting",
-            value: "on",
+            value: "on".into(),
             reports: vec![vec![0x4b, 0x01]],
         },
-        ("color", value @ ("blue" | "cyan" | "magenta" | "red" | "green" | "white")) => {
-            let preset = match value {
-                "blue" => "blue",
-                "cyan" => "cyan",
-                "magenta" => "magenta",
-                "red" => "red",
-                "green" => "green",
-                "white" => "white",
-                _ => unreachable!(),
-            };
-            let rgb = preset_rgb(preset).expect("allowlisted preset");
+        ("color", value) if color_rgb(value).is_some() => {
+            let rgb = color_rgb(value).expect("validated RGB color");
             SetCommand {
                 feature: "color",
-                value: preset,
+                value: canonical_color(value).expect("validated RGB color"),
                 reports: solid_color_profile(rgb, rgb),
             }
         }
-        (feature @ ("logo-color" | "ring-color"), value) if preset_rgb(value).is_some() => {
-            let preset = match value {
-                "blue" => "blue",
-                "cyan" => "cyan",
-                "magenta" => "magenta",
-                "red" => "red",
-                "green" => "green",
-                "white" => "white",
-                _ => unreachable!(),
-            };
+        (feature @ ("logo-color" | "ring-color"), value) if color_rgb(value).is_some() => {
             SetCommand {
                 feature: if feature == "logo-color" {
                     "logo-color"
                 } else {
                     "ring-color"
                 },
-                value: preset,
+                value: canonical_color(value).expect("validated RGB color"),
                 reports: Vec::new(),
             }
         }
         ("sidetone", "off") => SetCommand {
             feature: "sidetone",
-            value: "off",
+            value: "off".into(),
             reports: vec![vec![0x5d, 0x00]],
         },
         ("sidetone", "low") => SetCommand {
             feature: "sidetone",
-            value: "low",
+            value: "low".into(),
             reports: vec![vec![0x5d, 0x01]],
         },
         ("sidetone", "medium") => SetCommand {
             feature: "sidetone",
-            value: "medium",
+            value: "medium".into(),
             reports: vec![vec![0x5d, 0x02]],
         },
         ("sidetone", "high") => SetCommand {
             feature: "sidetone",
-            value: "high",
+            value: "high".into(),
             reports: vec![vec![0x5d, 0x03]],
         },
         _ => return Err(format!("unsupported control: {feature} {value}")),
@@ -937,22 +936,22 @@ fn set_control(command: SetCommand) -> Result<bool, String> {
         let cached = state::load().unwrap_or_default();
         let legacy = cached.lighting_color.as_deref();
         let logo = if command.feature == "logo-color" {
-            command.value
+            command.value.as_str()
         } else {
             cached.logo_color.as_deref().or(legacy).ok_or(
                 "logo color is unknown; apply a synchronized color before separating zones",
             )?
         };
         let ring = if command.feature == "ring-color" {
-            command.value
+            command.value.as_str()
         } else {
             cached.ring_color.as_deref().or(legacy).ok_or(
                 "ring color is unknown; apply a synchronized color before separating zones",
             )?
         };
         let reports = solid_color_profile(
-            preset_rgb(logo).ok_or("cached logo color is unsupported")?,
-            preset_rgb(ring).ok_or("cached ring color is unsupported")?,
+            color_rgb(logo).ok_or("cached logo color is unsupported")?,
+            color_rgb(ring).ok_or("cached ring color is unsupported")?,
         );
         resolved_zone_colors = Some((logo.to_owned(), ring.to_owned()));
         reports
@@ -965,7 +964,7 @@ fn set_control(command: SetCommand) -> Result<bool, String> {
     if let Some((logo, ring)) = resolved_zone_colors {
         state::update_lighting_colors(&logo, &ring)?;
     } else {
-        state::update_control(command.feature, command.value)?;
+        state::update_control(command.feature, &command.value)?;
     }
     println!("{} set to {}", command.feature, command.value);
     Ok(true)
@@ -1273,6 +1272,12 @@ mod tests {
             vec![0x4d, 0x00, 0x00, 0x33, 0xff, 0xcc, 0x01, 0x00]
         );
         assert_eq!(color.reports[12], vec![0x4b, 0x01]);
+        let custom = parse(&["color", "#112233"]).unwrap();
+        assert_eq!(custom.value, "#112233");
+        assert_eq!(
+            custom.reports[1],
+            vec![0x4d, 0x00, 0x00, 0x11, 0x22, 0x33, 0x01, 0x00]
+        );
         assert!(parse(&["logo-color", "blue"]).unwrap().reports.is_empty());
         assert!(
             parse(&["ring-color", "magenta"])
@@ -1281,6 +1286,8 @@ mod tests {
                 .is_empty()
         );
         assert!(parse(&["color", "112233"]).is_err());
+        assert!(parse(&["color", "#11223g"]).is_err());
+        assert!(parse(&["color", "#11223344"]).is_err());
         assert!(parse(&["raw", "46ff"]).is_err());
         assert!(parse(&["ambient", "invalid"]).is_err());
         assert!(parse(&["ambient", "anc", "extra"]).is_err());
