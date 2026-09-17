@@ -23,7 +23,7 @@
 4. [ ] Run PipeWire inventory in the user's desktop session.
 5. [x] Add a narrowly matched udev rule for read-only monitoring; do not grant
    access to unrelated `hidraw` devices.
-6. [ ] Prepare the Windows VM capture checklist for v0.2 research.
+6. [x] Prepare the Windows VM capture checklist for v0.2 research.
 
 ## Explicit non-goals for v0.1
 

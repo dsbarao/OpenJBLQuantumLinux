@@ -124,6 +124,7 @@ create a privileged daemon, or grant access to unrelated hidraw devices.
 
 - `docs/protocol/`: evidence ledger and protocol hypotheses;
 - `docs/reverse-engineering.md`: capture workflow and safety gates;
+- `docs/windows-vm-capture.md`: controlled QuantumENGINE/USBPcap workflow;
 - `docs/plan-v0.1.md`: milestone definition;
 - `tools/`: passive host/device inventory utilities;
 - `src/`: future Linux CLI, currently passive sysfs detection only;
