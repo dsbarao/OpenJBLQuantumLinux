@@ -4,6 +4,11 @@ Early HID protocol mappings are now documented through controlled passive
 observations and QuantumENGINE USBPcap comparisons. Linux support remains
 read-only; observed vendor writes are documented but are not replayed.
 
+Current consolidated mappings:
+
+- [`lighting.md`](lighting.md): lighting state, zones, segments, RGB, and known
+  effect identifiers.
+
 Use `evidence-ledger.md` to index experiments and sanitized artifacts. Keep
 raw captures outside Git in `captures/`. Protocol documents must distinguish:
 
