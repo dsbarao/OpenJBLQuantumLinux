@@ -17,5 +17,9 @@
 validated percentage and raw two-byte response. Other captured Feature Reports
 remain documentation-only until independently mapped and allowlisted.
 
+Hardware validation on CachyOS returned `49 3c`, correctly decoded as 60%.
+This is the third independently observed battery level after 90% and 85% in
+the controlled captures.
+
 Device writes, firmware operations, resets, driver detach, and guessed commands
 remain out of scope.

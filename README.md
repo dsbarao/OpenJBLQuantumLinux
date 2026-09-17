@@ -116,7 +116,8 @@ are appended as annotations while the original bytes remain visible.
 `status --dry-run` validates the matched character device without opening it.
 `status` opens hidraw read-only and performs only the allowlisted
 `HIDIOCGFEATURE` read for Report `0x49`, then validates and prints battery
-percentage. The code contains no SET_FEATURE or output-report path.
+percentage. Hardware validation returned `49 3c` (60%). The code contains no
+SET_FEATURE or output-report path.
 
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
