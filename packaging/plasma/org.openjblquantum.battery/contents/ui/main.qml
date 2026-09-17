@@ -345,20 +345,11 @@ PlasmoidItem {
 
         PlasmaComponents.Label {
             Layout.fillWidth: true
+            visible: root.errorMessage.length > 0
             horizontalAlignment: Text.AlignHCenter
-            text: root.errorMessage.length > 0
-                ? root.errorMessage
-                : "JBL Quantum 810 · leitura segura"
+            text: root.errorMessage
             wrapMode: Text.Wrap
             opacity: 0.7
-        }
-
-        PlasmaComponents.Button {
-            Layout.alignment: Qt.AlignHCenter
-            text: root.updating ? "Atualizando…" : "Atualizar"
-            icon.name: "view-refresh"
-            enabled: !root.updating
-            onClicked: root.refresh()
         }
     }
 
