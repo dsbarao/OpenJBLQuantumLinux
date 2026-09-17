@@ -15,13 +15,14 @@ PlasmoidItem {
     property string rawFeature: ""
     property string errorMessage: ""
     property bool updating: false
+    readonly property color batteryColor: batteryPercent < 0
+        ? Kirigami.Theme.disabledTextColor
+        : batteryPercent >= 60
+            ? "#35c759"
+            : batteryPercent >= 30 ? "#f5c542" : "#ff453a"
 
     Plasmoid.icon: "audio-headphones"
     Plasmoid.status: batteryPercent >= 0 ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.PassiveStatus
-    Plasmoid.toolTipMainText: "JBL Quantum 810"
-    Plasmoid.toolTipSubText: errorMessage.length > 0
-        ? errorMessage
-        : batteryPercent >= 0 ? `Bateria: ${batteryPercent}%` : "Bateria indisponível"
 
     function refresh() {
         if (updating) {
@@ -60,7 +61,7 @@ PlasmoidItem {
         id: compact
 
         implicitWidth: compactLayout.implicitWidth + Kirigami.Units.smallSpacing * 2
-        implicitHeight: Math.max(compactLayout.implicitHeight, Kirigami.Units.iconSizes.small)
+        implicitHeight: Math.max(compactLayout.implicitHeight, 24)
         onClicked: root.expanded = !root.expanded
 
         RowLayout {
@@ -68,17 +69,55 @@ PlasmoidItem {
             anchors.centerIn: parent
             spacing: Kirigami.Units.smallSpacing
 
-            Kirigami.Icon {
-                source: "audio-headphones"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+            Item {
+                Layout.preferredWidth: 47
+                Layout.preferredHeight: 24
+
+                Rectangle {
+                    id: batteryBody
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 42
+                    height: 22
+                    radius: 4
+                    color: "transparent"
+                    border.width: 2
+                    border.color: root.batteryColor
+
+                    Rectangle {
+                        x: 3
+                        y: 3
+                        width: root.batteryPercent >= 0
+                            ? Math.max(3, (parent.width - 6) * root.batteryPercent / 100)
+                            : 0
+                        height: parent.height - 6
+                        radius: 2
+                        color: root.batteryColor
+                        opacity: 0.85
+                    }
+
+                    Kirigami.Icon {
+                        anchors.centerIn: parent
+                        width: 15
+                        height: 15
+                        source: "audio-headphones"
+                    }
+                }
+
+                Rectangle {
+                    anchors.left: batteryBody.right
+                    anchors.leftMargin: 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 3
+                    height: 10
+                    radius: 1
+                    color: root.batteryColor
+                }
             }
 
             PlasmaComponents.Label {
                 text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "—"
-                color: root.batteryPercent >= 0 && root.batteryPercent <= 20
-                    ? Kirigami.Theme.negativeTextColor
-                    : Kirigami.Theme.textColor
+                color: root.batteryColor
                 font.bold: true
             }
         }
@@ -101,7 +140,8 @@ PlasmoidItem {
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignHCenter
             text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "Indisponível"
-            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 2
+            color: root.batteryColor
+            font.pixelSize: Kirigami.Units.gridUnit * 2
             font.bold: true
         }
 
