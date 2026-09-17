@@ -23,9 +23,18 @@ Observed Feature Report `0x4c` form:
 4c ZZ 64 05
 ```
 
-`ZZ` is the zone index (`00` Logo, `01` Ring). The capture UI showed speed
-`0.5x` and five segments while the trailing bytes were `64 05`; their exact
-semantics require independent speed and segment-count experiments.
+`ZZ` is the zone index (`00` Logo, `01` Ring). The third byte is an inverse
+animation-speed value:
+
+| QuantumENGINE speed | Decimal | Hex |
+|---|---:|---:|
+| 0.5x | 100 | `64` |
+| 1.0x | 75 | `4b` |
+| 1.5x | 50 | `32` |
+| 2.0x | 25 | `19` |
+
+The final byte remained `05` while the UI showed five segments. It is therefore
+a strong segment-count hypothesis, but has not been independently varied.
 
 ## Segment definition
 
