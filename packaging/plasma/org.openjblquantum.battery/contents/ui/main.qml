@@ -263,9 +263,12 @@ PlasmoidItem {
 
         PlasmaComponents.Label {
             Layout.fillWidth: true
-            visible: root.actionMessage.length > 0
+            Layout.minimumHeight: Kirigami.Units.gridUnit
+            Layout.preferredHeight: Kirigami.Units.gridUnit
             horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             text: root.actionMessage
+            opacity: root.actionMessage.length > 0 ? 1 : 0
             color: root.errorMessage.length > 0
                 ? Kirigami.Theme.negativeTextColor
                 : Kirigami.Theme.positiveTextColor
