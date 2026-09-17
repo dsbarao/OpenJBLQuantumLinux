@@ -12,10 +12,13 @@ PlasmoidItem {
 
     readonly property string command: "/bin/sh -lc \"$HOME/.cargo/bin/openjblquantum status --format json\""
     property int batteryPercent: -1
+    property bool charging: false
     property string rawFeature: ""
     property string errorMessage: ""
     property bool updating: false
-    readonly property color batteryColor: batteryPercent < 0
+    readonly property color batteryColor: charging
+        ? "#22d3ee"
+        : batteryPercent < 0
         ? Kirigami.Theme.disabledTextColor
         : batteryPercent >= 60
             ? "#35c759"
@@ -49,10 +52,12 @@ PlasmoidItem {
                 throw new Error("percentual inválido")
             }
             batteryPercent = percentage
+            charging = result.charging === true
             rawFeature = String(result.raw_feature ?? "")
             errorMessage = ""
         } catch (error) {
             batteryPercent = -1
+            charging = false
             errorMessage = `Resposta inválida: ${error}`
         }
     }
@@ -106,6 +111,18 @@ PlasmoidItem {
                         height: 15
                         source: "audio-headphones"
                     }
+
+                    PlasmaComponents.Label {
+                        visible: root.charging
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.rightMargin: 1
+                        anchors.topMargin: -4
+                        text: "⚡"
+                        color: "white"
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
                 }
 
                 Rectangle {
@@ -120,7 +137,9 @@ PlasmoidItem {
             }
 
             PlasmaComponents.Label {
-                text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "—"
+                text: root.batteryPercent >= 0
+                    ? root.charging ? `⚡ ${root.batteryPercent}%` : `${root.batteryPercent}%`
+                    : "—"
                 color: root.batteryColor
                 font.bold: true
             }
@@ -146,6 +165,14 @@ PlasmoidItem {
             text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "Indisponível"
             color: root.batteryColor
             font.pixelSize: Kirigami.Units.gridUnit * 2
+            font.bold: true
+        }
+
+        PlasmaComponents.Label {
+            Layout.alignment: Qt.AlignHCenter
+            visible: root.charging
+            text: "⚡ Carregando"
+            color: root.batteryColor
             font.bold: true
         }
 

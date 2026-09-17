@@ -15,6 +15,8 @@ First usable read-only Linux release for the JBL Quantum 810:
 - include a Plasma 6 panel widget with one-minute refresh and manual update;
 - show a battery-shaped panel indicator with headphones, percentage, and
   green/yellow/red charge thresholds;
+- detect the USB-C charging connection as `0ecb:206a` and show a cyan charging
+  state with a lightning indicator in the Plasma widget;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

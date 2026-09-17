@@ -16,8 +16,23 @@ mod hid;
 const USB_ROOT: &str = "/sys/bus/usb/devices";
 const JBL_VENDOR_ID: &str = "0ecb";
 const QUANTUM_810_PRODUCT_ID: &str = "2069";
+const QUANTUM_810_USB_C_PRODUCT_ID: &str = "206a";
 const BATTERY_FEATURE_REPORT_ID: u8 = 0x49;
 const BATTERY_FEATURE_REPORT_LEN: usize = 2;
+// Read-only reports observed in the QuantumENGINE startup sequence. This list
+// intentionally excludes every report the vendor software writes.
+const STATUS_PROBE_REPORTS: &[(u8, usize)] = &[
+    (0x68, 2),
+    (0x67, 2),
+    (0x62, 2),
+    (0x5c, 2),
+    (0x75, 2),
+    (0x49, 2),
+    (0x51, 13),
+    (0x47, 2),
+    (0x4a, 2),
+    (0x45, 2),
+];
 
 #[cfg(target_os = "linux")]
 unsafe extern "C" {
@@ -152,6 +167,7 @@ struct StatusOutput {
     access: &'static str,
     dry_run: bool,
     battery_percent: Option<u8>,
+    charging: Option<bool>,
     raw_feature: Option<String>,
 }
 
@@ -173,6 +189,18 @@ fn supported_devices() -> io::Result<Vec<PathBuf>> {
     }
     devices.sort();
     Ok(devices)
+}
+
+fn charging_usb_connected() -> io::Result<bool> {
+    for entry in fs::read_dir(USB_ROOT)? {
+        let path = entry?.path();
+        if read_trimmed(path.join("idVendor")).as_deref() == Some(JBL_VENDOR_ID)
+            && read_trimmed(path.join("idProduct")).as_deref() == Some(QUANTUM_810_USB_C_PRODUCT_ID)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn parse_descriptors(data: &[u8]) -> Result<Vec<Interface>, String> {
@@ -642,6 +670,19 @@ fn query_battery(node: &Path) -> Result<(u8, String), String> {
     Ok((battery, format_hid_report(&report)))
 }
 
+fn probe_status() -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    println!("matched JBL Quantum 810 HID node: {}", node.display());
+    println!("access mode: read-only allowlisted HID GET_FEATURE probe");
+    for &(report_id, length) in STATUS_PROBE_REPORTS {
+        let report = read_feature_report_read_only(&node, report_id, length)?;
+        println!("0x{report_id:02x}: {}", format_hid_report(&report));
+    }
+    Ok(true)
+}
+
 fn status(options: StatusOptions) -> Result<bool, String> {
     let Some(node) = quantum_hidraw_node()? else {
         return Ok(false);
@@ -664,6 +705,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
                 access: "hid-get-feature-read-only",
                 dry_run: true,
                 battery_percent: None,
+                charging: None,
                 raw_feature: None,
             })?;
         } else {
@@ -674,6 +716,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
         return Ok(true);
     }
     let (battery, raw_feature) = query_battery(&node)?;
+    let charging = charging_usb_connected().map_err(|error| error.to_string())?;
     if options.json {
         print_status_json(&StatusOutput {
             schema: 1,
@@ -682,10 +725,12 @@ fn status(options: StatusOptions) -> Result<bool, String> {
             access: "hid-get-feature-read-only",
             dry_run: false,
             battery_percent: Some(battery),
+            charging: Some(charging),
             raw_feature: Some(raw_feature),
         })?;
     } else {
         println!("battery: {battery}%");
+        println!("charging: {}", if charging { "yes" } else { "no" });
         println!("raw feature: {raw_feature}");
     }
     Ok(true)
@@ -748,7 +793,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|probe-status|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
 }
@@ -762,6 +807,7 @@ fn main() {
         "hid-descriptor" => hid_descriptor(),
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
         "status" => parse_status_options(args).and_then(status),
+        "probe-status" => probe_status(),
         "notify" => notify(args.next().as_deref() == Some("--dry-run")),
         "show" => show(args.next().as_deref() == Some("--dry-run")),
         "export"
@@ -867,11 +913,13 @@ mod tests {
             access: "hid-get-feature-read-only",
             dry_run: false,
             battery_percent: Some(60),
+            charging: Some(true),
             raw_feature: Some("49 3c".into()),
         };
         let json = serde_json::to_value(output).unwrap();
         assert_eq!(json["schema"], 1);
         assert_eq!(json["battery_percent"], 60);
+        assert_eq!(json["charging"], true);
         assert_eq!(json["raw_feature"], "49 3c");
     }
 }
