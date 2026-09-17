@@ -118,7 +118,7 @@ pub fn init_signal_service() -> Result<(), String> {
         .map_err(|_| "D-Bus signal service already initialized".to_string())
 }
 
-fn emit_changed_signal() {
+pub fn emit_changed_signal() {
     let Some(connection) = SIGNAL_CONNECTION.get() else {
         return;
     };

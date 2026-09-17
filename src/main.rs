@@ -232,6 +232,26 @@ fn charging_usb_connected() -> io::Result<bool> {
     Ok(false)
 }
 
+fn spawn_charging_watcher() -> Result<(), String> {
+    thread::Builder::new()
+        .name("openjblquantum-usb-power".into())
+        .spawn(|| {
+            let mut previous = charging_usb_connected().ok();
+            loop {
+                thread::sleep(Duration::from_millis(250));
+                let current = charging_usb_connected().ok();
+                if current.is_some() && previous.is_some() && current != previous {
+                    state::emit_changed_signal();
+                }
+                if current.is_some() {
+                    previous = current;
+                }
+            }
+        })
+        .map(|_| ())
+        .map_err(|error| format!("failed to start USB power watcher: {error}"))
+}
+
 fn parse_descriptors(data: &[u8]) -> Result<Vec<Interface>, String> {
     let mut interfaces: Vec<Interface> = Vec::new();
     let mut offset = 0;
@@ -619,6 +639,7 @@ fn monitor(dry_run: bool) -> Result<bool, String> {
 
 fn daemon() -> Result<bool, String> {
     state::init_signal_service()?;
+    spawn_charging_watcher()?;
     let mut runtime = state::load().unwrap_or_default();
     loop {
         let Some(node) = quantum_hidraw_node()? else {
