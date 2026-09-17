@@ -24,3 +24,5 @@
 | EVT-018 | 2026-09-16 | CachyOS / 0ecb:2069 | ANC/TalkThru mode cycled twice | conversation transcript | Confirms `02 00` off, `02 01` ANC, `02 02` TalkThru | Confirmed |
 | EVT-019 | 2026-09-16 | CachyOS / 0ecb:2069 | 3.5 mm cable connected to headset then disconnected; other end already on PC | conversation transcript | `02 00` on connect, `02 01` on disconnect; no dedicated jack report | Observed |
 | EVT-020 | 2026-09-16 | CachyOS / 0ecb:2069 | 3.5 mm cable cycle with noise control already off | conversation report | No Input Report observed | Confirmed negative |
+| EVT-021 | 2026-09-16 | Windows 11 VM / QuantumENGINE / 0ecb:2069 | Stop and restart QuantumENGINE service under USBPcap | `7cd95ebf7ee93272962bd6cfcb9b87c7b2e27f39914d33b591cb39fa7548381a` | Feature-report startup sequence captured; Report `0x49` returned `0x5a` | Observed |
+| EVT-022 | 2026-09-16 | Windows 11 VM / QuantumENGINE / 0ecb:2069 | Disable, then enable lighting | `ab3d8fd8f8ed0efb9c7ba9d1c0136f784680a9c417239b6dec8c4ba9e74a7458` | SET_FEATURE `4b 00/01`, followed by Input `07 00/01`; Input `08 55` confirms changing battery percentage | Confirmed |

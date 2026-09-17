@@ -93,6 +93,16 @@ pub fn confirmed_mappings() -> Vec<KnownInputMapping> {
             meaning: "microphone active",
         },
         KnownInputMapping {
+            report_id: "0x07",
+            payload: "0x00/0x01",
+            meaning: "lighting disabled/enabled",
+        },
+        KnownInputMapping {
+            report_id: "0x08",
+            payload: "0x00..0x64",
+            meaning: "battery percentage",
+        },
+        KnownInputMapping {
             report_id: "0x09",
             payload: "0x00",
             meaning: "headset off/disconnected",
@@ -236,6 +246,9 @@ pub fn interpret_input(bytes: &[u8]) -> Option<String> {
         [0x03, 0x02] => Some("bluetooth=pairing".into()),
         [0x06, 0x00] => Some("microphone=muted".into()),
         [0x06, 0x01] => Some("microphone=active".into()),
+        [0x07, 0x00] => Some("lighting=disabled".into()),
+        [0x07, 0x01] => Some("lighting=enabled".into()),
+        [0x08, percentage @ 0x00..=0x64] => Some(format!("battery={percentage}%")),
         [0x09, 0x00] => Some("headset=off-or-disconnected".into()),
         [0x09, 0x01] => Some("headset=on-or-connected".into()),
         [0x10, value @ 0x00..=0x10] => Some(match value {
@@ -305,6 +318,11 @@ mod tests {
             Some("microphone=muted".into())
         );
         assert_eq!(
+            interpret_input(&[0x07, 0x01]),
+            Some("lighting=enabled".into())
+        );
+        assert_eq!(interpret_input(&[0x08, 0x55]), Some("battery=85%".into()));
+        assert_eq!(
             interpret_input(&[0x10, 0x08]),
             Some("game-chat=center".into())
         );
@@ -320,6 +338,6 @@ mod tests {
             interpret_input(&[0x2f, 0x02]),
             Some("phone-mute-usage=asserted".into())
         );
-        assert_eq!(interpret_input(&[0x08, 0x5a]), None);
+        assert_eq!(interpret_input(&[0x08, 0x5a]), Some("battery=90%".into()));
     }
 }

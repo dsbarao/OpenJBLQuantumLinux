@@ -137,12 +137,16 @@ create a privileged daemon, or grant access to unrelated hidraw devices.
 | `0x02` | `00/01/02` | noise control off / ANC / TalkThru |
 | `0x03` | `00/01/02` | Bluetooth disconnected / connected / pairing |
 | `0x06` | `00/01` | microphone muted / active |
+| `0x07` | `00/01` | lighting disabled / enabled |
+| `0x08` | `00–64` | battery percentage (0–100 decimal) |
 | `0x09` | `00/01` | headset off-disconnected / on-connected |
 | `0x10` | `00–06, 08, 0a–10` | Game/Chat balance, normalized -7…+7 |
 | `0x2f` | bit 1 | HID Telephony Phone Mute pulse |
 
-Report `0x08` carrying `0x5a` is likely a 90% battery value, but is intentionally
-excluded from confirmed mappings until another known charge level is observed.
+QuantumENGINE startup returned Feature Report `0x49` with `0x5a` while the
+dongle emitted Input Report `08 5a`. A later controlled lighting capture emitted
+`08 55`, confirming the Input Report payload tracks the changing battery
+percentage (90%, then 85%).
 
 ## Scope
 
