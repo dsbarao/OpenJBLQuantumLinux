@@ -13,7 +13,7 @@
     "Id": "org.openjblquantum.battery",
     "License": "MIT",
     "Name": "JBL Quantum 810 Battery",
-    "Version": "0.3.2",
+    "Version": "0.1.0",
     "Website": "https://github.com/openjblquantum/openjblquantum"
   },
   "X-Plasma-API-Minimum-Version": "6.0"

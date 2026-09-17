@@ -2,7 +2,7 @@
 
 ## 0.1.0 — 2026-09-17
 
-First usable read-only Linux release for the JBL Quantum 810:
+First usable Linux release for the JBL Quantum 810:
 
 - detect USB device `0ecb:2069` and inspect interfaces/endpoints;
 - correlate Game, Chat, and microphone ALSA nodes;
@@ -12,17 +12,18 @@ First usable read-only Linux release for the JBL Quantum 810:
 - emit human-readable and schema-1 JSON battery status;
 - display battery percentage through a KDE desktop notification;
 - include an optional KDE application launcher;
-- include a Plasma 6 panel widget with one-minute refresh and manual update;
+- include a Plasma 6 panel widget with event-driven updates and a one-minute
+  fallback refresh;
 - show a battery-shaped panel indicator with headphones, percentage, and
   green/yellow/red charge thresholds;
 - detect the USB-C charging connection as `0ecb:206a` and show a cyan charging
   state with a lightning indicator in the Plasma widget;
-- add strictly allowlisted USB controls for ambient mode, global lighting, and
-  sidetone, exposed as menus in the Plasma widget;
+- add strictly allowlisted USB controls for ambient mode, global lighting,
+  full-profile solid-color presets, and sidetone;
 - replace floating control menus with polished in-widget expandable sections
   and keep the panel icon compact by moving the percentage into the detail view;
-- reduce the panel indicator to standard icon proportions and refresh charging
-  state and battery percentage automatically every five seconds;
+- use the Quantum 810 artwork in the detail view while keeping a compact
+  battery/headphone indicator in the panel;
 - add a read-only user service that caches confirmed HID events and exposes
   current ambient, lighting, microphone, battery, Bluetooth, and Game/Chat
   state to the widget; successful allowlisted commands also update the cache;
@@ -30,7 +31,11 @@ First usable read-only Linux release for the JBL Quantum 810:
   the Plasma widget;
 - replace five-second widget polling with event-driven D-Bus refreshes from the
   state service, retaining a low-frequency one-minute fallback;
+- track USB-C hotplug independently so charging remains accurate while the
+  headset is powered off;
+- include guarded user-level installation and removal helpers;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
-There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command
-path in this release.
+There is no firmware, reset, interface-claiming, raw-report, or arbitrary
+command path in this release. HID writes are limited to reviewed reports and
+fixed values in the built-in allowlist.

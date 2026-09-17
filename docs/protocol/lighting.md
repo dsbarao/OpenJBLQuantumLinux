@@ -1,8 +1,9 @@
 # Lighting protocol
 
-Status: partially mapped from controlled QuantumENGINE USBPcap captures. The
-global on/off command is implemented through the Linux client's strict
-allowlist; profile writes remain documentation-only.
+Status: mapped from controlled QuantumENGINE USBPcap captures. Global on/off
+and a deliberately small set of full-profile solid colors are implemented
+through the Linux client's strict allowlist. Arbitrary colors, partial-profile
+writes, animation selection, and OpenRGB integration remain out of scope.
 
 ## Global state
 
@@ -68,3 +69,12 @@ profiles used position values `00, 02, 04, 06, 08` in segment order.
 QuantumENGINE sends complete profiles for both zones when one segment changes.
 The application's synchronization switch appears to copy/reapply zone data and
 does not expose a distinct device-side synchronization flag.
+
+## Linux solid-color presets
+
+OpenJBLQuantum applies a preset by writing a complete five-segment Solid
+profile to both Logo and Ring, followed by global lighting enable. It never
+changes one segment in isolation. The allowlisted presets are blue (`#0029ff`),
+cyan (`#33ffcc`), magenta (`#ff00cc`), red (`#ff2020`), green (`#20ff66`), and
+white (`#ffffff`). The last three use the confirmed literal RGB fields but are
+OpenJBLQuantum convenience presets rather than captured vendor defaults.

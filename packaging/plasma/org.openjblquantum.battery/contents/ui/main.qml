@@ -24,7 +24,17 @@ PlasmoidItem {
     property string microphoneState: "unknown"
     property string sidetoneLevel: "unknown"
     property var lightingEnabled: null
+    property string lightingColor: "unknown"
     property int gameChatValue: -1
+    property bool controlBusy: false
+    readonly property var lightingPresets: [
+        { "key": "blue", "color": "#0029ff" },
+        { "key": "cyan", "color": "#33ffcc" },
+        { "key": "magenta", "color": "#ff00cc" },
+        { "key": "red", "color": "#ff2020" },
+        { "key": "green", "color": "#20ff66" },
+        { "key": "white", "color": "#ffffff" }
+    ]
     property bool updating: false
     readonly property bool deviceAvailable: batteryPercent >= 0
     readonly property bool daemonAvailable: daemonWatcher.registered
@@ -51,6 +61,8 @@ PlasmoidItem {
     }
 
     function runControl(feature, value) {
+        if (controlBusy) return
+        controlBusy = true
         clearAction.stop()
         actionMessage = "Aplicando…"
         const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} ${value}"`
@@ -110,6 +122,7 @@ PlasmoidItem {
             microphoneState = String(result.microphone ?? "unknown")
             sidetoneLevel = String(result.sidetone_level ?? "unknown")
             lightingEnabled = result.lighting_enabled ?? null
+            lightingColor = String(result.lighting_color ?? "unknown")
             gameChatValue = result.game_chat_value === null ? -1 : Number(result.game_chat_value)
             errorMessage = ""
         } catch (error) {
@@ -319,7 +332,7 @@ PlasmoidItem {
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: Kirigami.Units.smallSpacing
-            enabled: root.deviceAvailable
+            enabled: root.deviceAvailable && !root.controlBusy
 
                 PlasmaComponents.Button {
                     text: "Ambiente"
@@ -382,7 +395,7 @@ PlasmoidItem {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "ambient"
-                    enabled: root.deviceAvailable
+                    enabled: root.deviceAvailable && !root.controlBusy
                     PlasmaComponents.Button { text: "Desligado"; checkable: true; checked: root.ambientMode === "off"; onClicked: root.runControl("ambient", "off") }
                     PlasmaComponents.Button { text: "ANC"; checkable: true; checked: root.ambientMode === "anc"; onClicked: root.runControl("ambient", "anc") }
                     PlasmaComponents.Button { text: "TalkThru"; checkable: true; checked: root.ambientMode === "talkthru"; onClicked: root.runControl("ambient", "talkthru") }
@@ -391,15 +404,51 @@ PlasmoidItem {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "lighting"
-                    enabled: root.deviceAvailable
+                    enabled: root.deviceAvailable && !root.controlBusy
                     PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; checkable: true; checked: root.lightingEnabled === true; onClicked: root.runControl("lighting", "on") }
                     PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; checkable: true; checked: root.lightingEnabled === false; onClicked: root.runControl("lighting", "off") }
+                }
+
+                PlasmaComponents.Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "lighting"
+                    text: "Cor sólida · logotipo e anel"
+                    opacity: 0.7
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "lighting"
+                    enabled: root.deviceAvailable && !root.controlBusy
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Repeater {
+                        model: root.lightingPresets
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 28
+                            radius: Kirigami.Units.cornerRadius
+                            color: modelData.color
+                            border.width: root.lightingColor === modelData.key ? 3 : 1
+                            border.color: root.lightingColor === modelData.key
+                                ? Kirigami.Theme.highlightColor
+                                : Kirigami.Theme.textColor
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.runControl("color", parent.modelData.key)
+                            }
+                        }
+                    }
                 }
 
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.openSection === "sidetone"
-                    enabled: root.deviceAvailable
+                    enabled: root.deviceAvailable && !root.controlBusy
                     PlasmaComponents.Button { text: "Off"; checkable: true; checked: root.sidetoneLevel === "off"; onClicked: root.runControl("sidetone", "off") }
                     PlasmaComponents.Button { text: "Baixo"; checkable: true; checked: root.sidetoneLevel === "low"; onClicked: root.runControl("sidetone", "low") }
                     PlasmaComponents.Button { text: "Médio"; checkable: true; checked: root.sidetoneLevel === "medium"; onClicked: root.runControl("sidetone", "medium") }
@@ -438,6 +487,7 @@ PlasmoidItem {
         onNewData: function(sourceName, data) {
             disconnectSource(sourceName)
             if (sourceName !== root.command) {
+                root.controlBusy = false
                 const exitCode = Number(data["exit code"] ?? -1)
                 const stderr = String(data.stderr ?? "").trim()
                 if (exitCode === 0) {

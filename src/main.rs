@@ -178,7 +178,7 @@ struct StatusOptions {
 struct SetCommand {
     feature: &'static str,
     value: &'static str,
-    report: [u8; 2],
+    reports: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -195,6 +195,7 @@ struct StatusOutput {
     ambient_mode: Option<String>,
     microphone: Option<String>,
     lighting_enabled: Option<bool>,
+    lighting_color: Option<String>,
     game_chat_value: Option<u8>,
     bluetooth: Option<String>,
     sidetone_level: Option<String>,
@@ -643,6 +644,9 @@ fn daemon() -> Result<bool, String> {
     let mut runtime = state::load().unwrap_or_default();
     loop {
         let Some(node) = quantum_hidraw_node()? else {
+            if let Some(cached) = state::load() {
+                runtime = cached;
+            }
             if runtime.headset_connected != Some(false) {
                 runtime.headset_connected = Some(false);
                 state::save(&mut runtime)?;
@@ -651,6 +655,9 @@ fn daemon() -> Result<bool, String> {
             continue;
         };
 
+        if let Some(cached) = state::load() {
+            runtime = cached;
+        }
         if let Ok((battery, _)) = query_battery(&node) {
             runtime.battery_percent = Some(battery);
         }
@@ -669,6 +676,9 @@ fn daemon() -> Result<bool, String> {
             match device.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(count) => {
+                    if let Some(cached) = state::load() {
+                        runtime = cached;
+                    }
                     if runtime.apply_input(&buffer[..count]) {
                         state::save(&mut runtime)?;
                     }
@@ -730,7 +740,7 @@ fn read_feature_report_read_only(
     Ok(buffer)
 }
 
-fn set_feature_report_allowlisted(node: &Path, report: &[u8; 2]) -> Result<(), String> {
+fn set_feature_report_allowlisted(node: &Path, report: &[u8]) -> Result<(), String> {
     let metadata = fs::metadata(node).map_err(|error| format!("{}: {error}", node.display()))?;
     if !metadata.file_type().is_char_device() {
         return Err(format!("refusing non-character device: {}", node.display()));
@@ -740,11 +750,11 @@ fn set_feature_report_allowlisted(node: &Path, report: &[u8; 2]) -> Result<(), S
         .write(true)
         .open(node)
         .map_err(|error| format!("{}: {error}", node.display()))?;
-    let mut buffer = *report;
+    let mut buffer = report.to_vec();
     #[cfg(target_os = "linux")]
-    // SAFETY: the device remains open, the two-byte buffer matches the ioctl
-    // size, and callers can only supply one of the compile-time allowlisted
-    // reports produced by `parse_set_command`.
+    // SAFETY: the device remains open, the buffer length matches the ioctl
+    // size, and callers can only supply reports assembled by the strict
+    // allowlist in `parse_set_command`.
     let count = unsafe {
         ioctl(
             device.as_raw_fd(),
@@ -764,6 +774,27 @@ fn set_feature_report_allowlisted(node: &Path, report: &[u8; 2]) -> Result<(), S
     Ok(())
 }
 
+fn solid_color_profile(red: u8, green: u8, blue: u8) -> Vec<Vec<u8>> {
+    let mut reports = Vec::with_capacity(13);
+    for zone in 0..=1 {
+        reports.push(vec![0x4c, zone, 0x64, 0x05]);
+        for segment in 0..5 {
+            reports.push(vec![
+                0x4d,
+                zone,
+                segment,
+                red,
+                green,
+                blue,
+                0x01,
+                segment * 2,
+            ]);
+        }
+    }
+    reports.push(vec![0x4b, 0x01]);
+    reports
+}
+
 fn parse_set_command(mut args: impl Iterator<Item = String>) -> Result<SetCommand, String> {
     let feature = args.next().ok_or("set requires a feature")?;
     let value = args.next().ok_or("set requires a value")?;
@@ -774,47 +805,63 @@ fn parse_set_command(mut args: impl Iterator<Item = String>) -> Result<SetComman
         ("ambient", "off") => SetCommand {
             feature: "ambient",
             value: "off",
-            report: [0x46, 0x00],
+            reports: vec![vec![0x46, 0x00]],
         },
         ("ambient", "anc") => SetCommand {
             feature: "ambient",
             value: "anc",
-            report: [0x46, 0x01],
+            reports: vec![vec![0x46, 0x01]],
         },
         ("ambient", "talkthru") => SetCommand {
             feature: "ambient",
             value: "talkthru",
-            report: [0x46, 0x02],
+            reports: vec![vec![0x46, 0x02]],
         },
         ("lighting", "off") => SetCommand {
             feature: "lighting",
             value: "off",
-            report: [0x4b, 0x00],
+            reports: vec![vec![0x4b, 0x00]],
         },
         ("lighting", "on") => SetCommand {
             feature: "lighting",
             value: "on",
-            report: [0x4b, 0x01],
+            reports: vec![vec![0x4b, 0x01]],
         },
+        ("color", value @ ("blue" | "cyan" | "magenta" | "red" | "green" | "white")) => {
+            let (red, green, blue, preset) = match value {
+                "blue" => (0x00, 0x29, 0xff, "blue"),
+                "cyan" => (0x33, 0xff, 0xcc, "cyan"),
+                "magenta" => (0xff, 0x00, 0xcc, "magenta"),
+                "red" => (0xff, 0x20, 0x20, "red"),
+                "green" => (0x20, 0xff, 0x66, "green"),
+                "white" => (0xff, 0xff, 0xff, "white"),
+                _ => unreachable!(),
+            };
+            SetCommand {
+                feature: "color",
+                value: preset,
+                reports: solid_color_profile(red, green, blue),
+            }
+        }
         ("sidetone", "off") => SetCommand {
             feature: "sidetone",
             value: "off",
-            report: [0x5d, 0x00],
+            reports: vec![vec![0x5d, 0x00]],
         },
         ("sidetone", "low") => SetCommand {
             feature: "sidetone",
             value: "low",
-            report: [0x5d, 0x01],
+            reports: vec![vec![0x5d, 0x01]],
         },
         ("sidetone", "medium") => SetCommand {
             feature: "sidetone",
             value: "medium",
-            report: [0x5d, 0x02],
+            reports: vec![vec![0x5d, 0x02]],
         },
         ("sidetone", "high") => SetCommand {
             feature: "sidetone",
             value: "high",
-            report: [0x5d, 0x03],
+            reports: vec![vec![0x5d, 0x03]],
         },
         _ => return Err(format!("unsupported control: {feature} {value}")),
     };
@@ -825,7 +872,9 @@ fn set_control(command: SetCommand) -> Result<bool, String> {
     let Some(node) = quantum_hidraw_node()? else {
         return Ok(false);
     };
-    set_feature_report_allowlisted(&node, &command.report)?;
+    for report in &command.reports {
+        set_feature_report_allowlisted(&node, report)?;
+    }
     state::update_control(command.feature, command.value)?;
     println!("{} set to {}", command.feature, command.value);
     Ok(true)
@@ -907,6 +956,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
                 ambient_mode: None,
                 microphone: None,
                 lighting_enabled: None,
+                lighting_color: None,
                 game_chat_value: None,
                 bluetooth: None,
                 sidetone_level: None,
@@ -935,6 +985,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
             ambient_mode: cached.ambient_mode,
             microphone: cached.microphone,
             lighting_enabled: cached.lighting_enabled,
+            lighting_color: cached.lighting_color,
             game_chat_value: cached.game_chat_value,
             bluetooth: cached.bluetooth,
             sidetone_level: cached.sidetone_level,
@@ -1004,7 +1055,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("set permits only confirmed two-byte Feature Reports from the built-in allowlist");
 }
@@ -1104,9 +1155,27 @@ mod tests {
     #[test]
     fn set_commands_are_strictly_allowlisted() {
         let parse = |items: &[&str]| parse_set_command(items.iter().map(|item| (*item).into()));
-        assert_eq!(parse(&["ambient", "anc"]).unwrap().report, [0x46, 0x01]);
-        assert_eq!(parse(&["lighting", "off"]).unwrap().report, [0x4b, 0x00]);
-        assert_eq!(parse(&["sidetone", "high"]).unwrap().report, [0x5d, 0x03]);
+        assert_eq!(
+            parse(&["ambient", "anc"]).unwrap().reports,
+            vec![vec![0x46, 0x01]]
+        );
+        assert_eq!(
+            parse(&["lighting", "off"]).unwrap().reports,
+            vec![vec![0x4b, 0x00]]
+        );
+        assert_eq!(
+            parse(&["sidetone", "high"]).unwrap().reports,
+            vec![vec![0x5d, 0x03]]
+        );
+        let color = parse(&["color", "cyan"]).unwrap();
+        assert_eq!(color.reports.len(), 13);
+        assert_eq!(color.reports[0], vec![0x4c, 0x00, 0x64, 0x05]);
+        assert_eq!(
+            color.reports[1],
+            vec![0x4d, 0x00, 0x00, 0x33, 0xff, 0xcc, 0x01, 0x00]
+        );
+        assert_eq!(color.reports[12], vec![0x4b, 0x01]);
+        assert!(parse(&["color", "112233"]).is_err());
         assert!(parse(&["raw", "46ff"]).is_err());
         assert!(parse(&["ambient", "invalid"]).is_err());
         assert!(parse(&["ambient", "anc", "extra"]).is_err());
@@ -1144,6 +1213,7 @@ mod tests {
             ambient_mode: Some("anc".into()),
             microphone: Some("active".into()),
             lighting_enabled: Some(true),
+            lighting_color: Some("cyan".into()),
             game_chat_value: Some(8),
             bluetooth: Some("connected".into()),
             sidetone_level: Some("low".into()),

@@ -2,11 +2,11 @@
 
 Open-source Linux tooling for JBL Quantum headsets, initially focused on the
 JBL Quantum 810 wireless dongle. The project began with safe device detection
-and now includes documented, allowlisted read-only status queries.
+and now includes documented status queries and strictly allowlisted controls.
 
 ## Current status
 
-Research scaffold. On the initial CachyOS host, the dongle was detected as
+Usable v0.1 controller and Plasma widget. On the initial CachyOS host, the dongle was detected as
 `0ecb:2069` (`Harman International Inc`, `JBL Quantum810 Wireless`). It exposes
 five USB Audio-class interfaces and one HID-class interface. See
 [`docs/inventory/initial-cachyos.md`](docs/inventory/initial-cachyos.md).
@@ -19,17 +19,18 @@ links every conclusion to its experiment.
 
 ## Safety boundary
 
-The repository currently permits passive discovery plus one allowlisted status
-read:
+The repository permits passive discovery, allowlisted status reads, and only
+the confirmed fixed-value controls documented under `docs/protocol/`:
 
 - read Linux `sysfs` and udev metadata;
 - inspect descriptors already exported by the kernel;
 - enumerate ALSA/PipeWire nodes when accessible;
-- never open `/dev/hidraw*` or `/dev/bus/usb/*` for writing;
 - query only battery Feature Report `0x49` through Linux `HIDIOCGFEATURE`;
-- open hidraw read-only and provide no SET_FEATURE or output-report API;
-- never issue device writes, resets, driver detach, firmware operations, or
-  guessed commands.
+- monitor spontaneous input through a read-only hidraw handle;
+- permit only built-in ambient, lighting, solid-color, and sidetone Feature
+  Reports whose fields and values were confirmed from controlled captures;
+- reject raw reports, arbitrary RGB input, resets, driver detach, firmware
+  operations, and guessed commands.
 
 Any future active experiment must first be documented with provenance,
 expected bytes, rollback/risk analysis, and explicit opt-in.
@@ -57,7 +58,7 @@ rustc --version
 cargo --version
 ```
 
-The Rust CLI is a dependency-free skeleton. Run it directly from the repository:
+Run the Rust CLI directly from the repository:
 
 ```bash
 cargo check
@@ -193,11 +194,12 @@ kpackagetool6 --type Plasma/Applet --upgrade \
 
 Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
-allowlisted `openjblquantum` commands. Its popup includes expandable controls for ambient
-mode (off/ANC/TalkThru), global lighting (on/off), and hardware sidetone
-(off/low/medium/high). These controls send only the confirmed two-byte Feature
-Reports documented under `docs/protocol/`; arbitrary reports are rejected by
-the CLI parser.
+allowlisted `openjblquantum` commands. Its popup includes expandable controls
+for ambient mode (off/ANC/TalkThru), global lighting (on/off), six solid-color
+presets applied to the complete Logo and Ring profiles, and hardware sidetone
+(off/low/medium/high). These controls send only confirmed Feature Reports
+documented under `docs/protocol/`; arbitrary reports and arbitrary RGB values
+are rejected by the CLI parser.
 
 For real-time state tracking, install and enable the user service:
 

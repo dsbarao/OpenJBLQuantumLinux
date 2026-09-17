@@ -17,6 +17,7 @@ pub struct RuntimeState {
     pub ambient_mode: Option<String>,
     pub microphone: Option<String>,
     pub lighting_enabled: Option<bool>,
+    pub lighting_color: Option<String>,
     pub battery_percent: Option<u8>,
     pub game_chat_value: Option<u8>,
     pub bluetooth: Option<String>,
@@ -136,6 +137,10 @@ pub fn update_control(feature: &str, value: &str) -> Result<(), String> {
     match feature {
         "ambient" => state.ambient_mode = Some(value.into()),
         "lighting" => state.lighting_enabled = Some(value == "on"),
+        "color" => {
+            state.lighting_enabled = Some(true);
+            state.lighting_color = Some(value.into());
+        }
         "sidetone" => state.sidetone_level = Some(value.into()),
         _ => return Err(format!("unsupported cached control: {feature}")),
     }

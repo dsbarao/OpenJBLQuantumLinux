@@ -20,22 +20,22 @@ all USB writes strictly allowlisted.
 
 - [x] Observe confirmed Input Reports for headset power, ambient mode, microphone,
   lighting, battery, and Game/Chat balance.
-- Detect dongle and USB-C hotplug events.
-- Update the widget immediately instead of depending only on polling.
+- [x] Detect dongle and USB-C hotplug events.
+- [x] Update the widget immediately instead of depending only on polling.
 
 ## 3. Introduce a single local state service
 
-- Own the hidraw event stream in one process.
-- Expose a small local, versioned API for the widget and CLI.
+- [x] Own the hidraw event stream in one process.
+- [x] Expose a small local, versioned API for the widget and CLI.
 - Serialize writes so the widget, future desktop application, and OpenRGB do
   not contend for the HID interface.
-- Keep firmware, arbitrary reports, and unconfirmed writes out of scope.
+- [x] Keep firmware, arbitrary reports, and unconfirmed writes out of scope.
 
 ## 4. Add safe lighting primitives
 
-- Represent the complete Logo and Ring profiles in memory.
-- Implement global on/off first, then full-profile solid colors per zone.
-- Never overwrite one segment without preserving the other segment data.
+- [x] Generate complete Logo and Ring profiles from fixed presets.
+- [x] Implement global on/off and synchronized full-profile solid colors.
+- [x] Never overwrite one segment without replacing the complete profile.
 - Use the same library as the future OpenRGB integration.
 
 ## 5. Prepare OpenRGB integration
