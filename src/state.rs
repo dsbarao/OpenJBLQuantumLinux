@@ -19,6 +19,7 @@ pub struct RuntimeState {
     pub lighting_enabled: Option<bool>,
     pub lighting_color: Option<String>,
     pub battery_percent: Option<u8>,
+    pub charging: Option<bool>,
     pub game_chat_value: Option<u8>,
     pub bluetooth: Option<String>,
     pub sidetone_level: Option<String>,

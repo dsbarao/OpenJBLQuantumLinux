@@ -211,9 +211,9 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 19
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 27
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 21
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 27
         spacing: Kirigami.Units.smallSpacing
 
         Image {
@@ -460,7 +460,7 @@ PlasmoidItem {
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignHCenter
             visible: root.charging
-            text: "⚡ Carregando"
+            text: root.batteryPercent >= 100 ? "⚡ Carregado" : "⚡ Carregando"
             color: "#f5c542"
             font.bold: true
         }

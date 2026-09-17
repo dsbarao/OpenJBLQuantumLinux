@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 — 2026-09-17
+
+- reserve enough popup height to display all solid-color controls without
+  manual resizing;
+- debounce USB-C topology changes before updating charging state;
+- keep `Carregando` or `Carregado` visible for the entire time the cable is
+  confirmed present, including while the headset is powered off.
+
 ## 0.1.0 — 2026-09-17
 
 First usable Linux release for the JBL Quantum 810:

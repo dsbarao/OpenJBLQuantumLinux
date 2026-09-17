@@ -237,15 +237,35 @@ fn spawn_charging_watcher() -> Result<(), String> {
     thread::Builder::new()
         .name("openjblquantum-usb-power".into())
         .spawn(|| {
-            let mut previous = charging_usb_connected().ok();
+            let mut confirmed = state::load().and_then(|cached| cached.charging);
+            let mut candidate = None;
+            let mut candidate_samples = 0_u8;
             loop {
                 thread::sleep(Duration::from_millis(250));
-                let current = charging_usb_connected().ok();
-                if current.is_some() && previous.is_some() && current != previous {
-                    state::emit_changed_signal();
+                let Ok(current) = charging_usb_connected() else {
+                    continue;
+                };
+                if confirmed == Some(current) {
+                    candidate = None;
+                    candidate_samples = 0;
+                    continue;
                 }
-                if current.is_some() {
-                    previous = current;
+                if candidate == Some(current) {
+                    candidate_samples += 1;
+                } else {
+                    candidate = Some(current);
+                    candidate_samples = 1;
+                }
+                if candidate_samples >= 3 {
+                    let mut cached = state::load().unwrap_or_default();
+                    cached.charging = Some(current);
+                    if let Err(error) = state::save(&mut cached) {
+                        eprintln!("failed to cache USB power state: {error}");
+                    } else {
+                        confirmed = Some(current);
+                    }
+                    candidate = None;
+                    candidate_samples = 0;
                 }
             }
         })
@@ -969,8 +989,11 @@ fn status(options: StatusOptions) -> Result<bool, String> {
         return Ok(true);
     }
     let (battery, raw_feature) = query_battery(&node)?;
-    let charging = charging_usb_connected().map_err(|error| error.to_string())?;
     let cached = state::load().unwrap_or_default();
+    let charging = match cached.charging {
+        Some(charging) => charging,
+        None => charging_usb_connected().map_err(|error| error.to_string())?,
+    };
     if options.json {
         print_status_json(&StatusOutput {
             schema: 1,
