@@ -21,6 +21,8 @@ First usable read-only Linux release for the JBL Quantum 810:
   sidetone, exposed as menus in the Plasma widget;
 - replace floating control menus with polished in-widget expandable sections
   and keep the panel icon compact by moving the percentage into the detail view;
+- reduce the panel indicator to standard icon proportions and refresh charging
+  state and battery percentage automatically every five seconds;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command

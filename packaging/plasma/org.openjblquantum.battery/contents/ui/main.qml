@@ -50,6 +50,7 @@ PlasmoidItem {
         const stderr = String(data.stderr ?? "").trim()
         if (exitCode !== 0) {
             batteryPercent = -1
+            charging = false
             errorMessage = stderr || "Headset não encontrado"
             return
         }
@@ -73,8 +74,8 @@ PlasmoidItem {
     compactRepresentation: MouseArea {
         id: compact
 
-        implicitWidth: 47 + Kirigami.Units.smallSpacing * 2
-        implicitHeight: Math.max(compactLayout.implicitHeight, 24)
+        implicitWidth: 34 + Kirigami.Units.smallSpacing
+        implicitHeight: Math.max(compactLayout.implicitHeight, 18)
         Layout.minimumWidth: implicitWidth
         Layout.preferredWidth: implicitWidth
         Layout.minimumHeight: implicitHeight
@@ -84,8 +85,8 @@ PlasmoidItem {
         Item {
             id: compactLayout
             anchors.centerIn: parent
-            width: 47
-            height: 24
+            width: 34
+            height: 18
 
             Item {
                 anchors.fill: parent
@@ -94,29 +95,29 @@ PlasmoidItem {
                     id: batteryBody
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 42
-                    height: 22
-                    radius: 4
+                    width: 30
+                    height: 16
+                    radius: 3
                     color: "transparent"
-                    border.width: 2
+                    border.width: 1
                     border.color: root.batteryColor
 
                     Rectangle {
-                        x: 3
-                        y: 3
+                        x: 2
+                        y: 2
                         width: root.batteryPercent >= 0
-                            ? Math.max(3, (parent.width - 6) * root.batteryPercent / 100)
+                            ? Math.max(2, (parent.width - 4) * root.batteryPercent / 100)
                             : 0
-                        height: parent.height - 6
-                        radius: 2
+                        height: parent.height - 4
+                        radius: 1
                         color: root.batteryColor
                         opacity: 0.85
                     }
 
                     Kirigami.Icon {
                         anchors.centerIn: parent
-                        width: 15
-                        height: 15
+                        width: 11
+                        height: 11
                         source: "audio-headphones"
                     }
 
@@ -125,20 +126,20 @@ PlasmoidItem {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.rightMargin: 1
-                        anchors.topMargin: -4
+                        anchors.topMargin: -3
                         text: "⚡"
                         color: "white"
-                        font.pixelSize: 11
+                        font.pixelSize: 8
                         font.bold: true
                     }
                 }
 
                 Rectangle {
                     anchors.left: batteryBody.right
-                    anchors.leftMargin: 2
+                    anchors.leftMargin: 1
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 3
-                    height: 10
+                    width: 2
+                    height: 7
                     radius: 1
                     color: root.batteryColor
                 }
@@ -309,7 +310,7 @@ PlasmoidItem {
     }
 
     Timer {
-        interval: 60000
+        interval: 5000
         repeat: true
         running: true
         triggeredOnStart: true

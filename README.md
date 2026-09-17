@@ -147,9 +147,9 @@ It then appears in the application menu as **JBL Quantum 810 Battery**.
 
 ### Plasma 6 panel widget
 
-The repository also includes a native Plasma 6 widget that shows the battery
-percentage directly in the panel, refreshes once per minute, and opens a detail
-view when clicked. While the USB-C charging connection (`0ecb:206a`) is
+The repository also includes a native Plasma 6 widget with a compact panel
+indicator. It refreshes every five seconds and shows the percentage in its
+detail view when clicked. While the USB-C charging connection (`0ecb:206a`) is
 present, the widget changes to cyan and displays a lightning indicator. Install
 it for the current user:
 
