@@ -167,7 +167,7 @@ kpackagetool6 --type Plasma/Applet --upgrade \
 
 Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
-allowlisted `openjblquantum` commands. Its popup includes menus for ambient
+allowlisted `openjblquantum` commands. Its popup includes expandable controls for ambient
 mode (off/ANC/TalkThru), global lighting (on/off), and hardware sidetone
 (off/low/medium/high). These controls send only the confirmed two-byte Feature
 Reports documented under `docs/protocol/`; arbitrary reports are rejected by

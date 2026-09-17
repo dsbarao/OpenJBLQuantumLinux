@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 
 import org.kde.kirigami as Kirigami
@@ -17,6 +16,7 @@ PlasmoidItem {
     property string rawFeature: ""
     property string errorMessage: ""
     property string actionMessage: ""
+    property string openSection: ""
     property bool updating: false
     readonly property color batteryColor: charging
         ? "#22d3ee"
@@ -73,7 +73,7 @@ PlasmoidItem {
     compactRepresentation: MouseArea {
         id: compact
 
-        implicitWidth: compactLayout.implicitWidth + Kirigami.Units.smallSpacing * 2
+        implicitWidth: 47 + Kirigami.Units.smallSpacing * 2
         implicitHeight: Math.max(compactLayout.implicitHeight, 24)
         Layout.minimumWidth: implicitWidth
         Layout.preferredWidth: implicitWidth
@@ -81,14 +81,14 @@ PlasmoidItem {
         Layout.preferredHeight: implicitHeight
         onClicked: root.expanded = !root.expanded
 
-        RowLayout {
+        Item {
             id: compactLayout
             anchors.centerIn: parent
-            spacing: Kirigami.Units.smallSpacing
+            width: 47
+            height: 24
 
             Item {
-                Layout.preferredWidth: 47
-                Layout.preferredHeight: 24
+                anchors.fill: parent
 
                 Rectangle {
                     id: batteryBody
@@ -144,13 +144,6 @@ PlasmoidItem {
                 }
             }
 
-            PlasmaComponents.Label {
-                text: root.batteryPercent >= 0
-                    ? root.charging ? `⚡ ${root.batteryPercent}%` : `${root.batteryPercent}%`
-                    : "—"
-                color: root.batteryColor
-                font.bold: true
-            }
         }
     }
 
@@ -194,19 +187,74 @@ PlasmoidItem {
             PlasmaComponents.Button {
                 text: "Ambiente"
                 icon.name: "audio-headphones-symbolic"
-                onClicked: ambientMenu.popup()
+                checkable: true
+                checked: root.openSection === "ambient"
+                onClicked: root.openSection = checked ? "ambient" : ""
             }
 
             PlasmaComponents.Button {
                 text: "Luzes"
                 icon.name: "lightbulb"
-                onClicked: lightingMenu.popup()
+                checkable: true
+                checked: root.openSection === "lighting"
+                onClicked: root.openSection = checked ? "lighting" : ""
             }
 
             PlasmaComponents.Button {
                 text: "Sidetone"
                 icon.name: "microphone-sensitivity-high"
-                onClicked: sidetoneMenu.popup()
+                checkable: true
+                checked: root.openSection === "sidetone"
+                onClicked: root.openSection = checked ? "sidetone" : ""
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: controlOptions.implicitHeight + Kirigami.Units.largeSpacing * 2
+            visible: root.openSection.length > 0
+            radius: Kirigami.Units.cornerRadius
+            color: Kirigami.Theme.backgroundColor
+            border.width: 1
+            border.color: Kirigami.Theme.disabledTextColor
+
+            ColumnLayout {
+                id: controlOptions
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                PlasmaComponents.Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: root.openSection === "ambient"
+                        ? "Controle de som ambiente"
+                        : root.openSection === "lighting" ? "Iluminação" : "Retorno do microfone"
+                    font.bold: true
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "ambient"
+                    PlasmaComponents.Button { text: "Desligado"; onClicked: root.runControl("ambient", "off") }
+                    PlasmaComponents.Button { text: "ANC"; onClicked: root.runControl("ambient", "anc") }
+                    PlasmaComponents.Button { text: "TalkThru"; onClicked: root.runControl("ambient", "talkthru") }
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "lighting"
+                    PlasmaComponents.Button { text: "Ligar"; icon.name: "lightbulb"; onClicked: root.runControl("lighting", "on") }
+                    PlasmaComponents.Button { text: "Desligar"; icon.name: "lightbulb-off"; onClicked: root.runControl("lighting", "off") }
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: root.openSection === "sidetone"
+                    PlasmaComponents.Button { text: "Off"; onClicked: root.runControl("sidetone", "off") }
+                    PlasmaComponents.Button { text: "Baixo"; onClicked: root.runControl("sidetone", "low") }
+                    PlasmaComponents.Button { text: "Médio"; onClicked: root.runControl("sidetone", "medium") }
+                    PlasmaComponents.Button { text: "Alto"; onClicked: root.runControl("sidetone", "high") }
+                }
             }
         }
 
@@ -258,30 +306,6 @@ PlasmoidItem {
             root.updating = false
             root.applyResult(data)
         }
-    }
-
-    QQC2.Menu {
-        id: ambientMenu
-        title: "Controle de som ambiente"
-        QQC2.MenuItem { text: "Desligado"; onTriggered: root.runControl("ambient", "off") }
-        QQC2.MenuItem { text: "ANC"; onTriggered: root.runControl("ambient", "anc") }
-        QQC2.MenuItem { text: "TalkThru"; onTriggered: root.runControl("ambient", "talkthru") }
-    }
-
-    QQC2.Menu {
-        id: lightingMenu
-        title: "Iluminação"
-        QQC2.MenuItem { text: "Ligar"; onTriggered: root.runControl("lighting", "on") }
-        QQC2.MenuItem { text: "Desligar"; onTriggered: root.runControl("lighting", "off") }
-    }
-
-    QQC2.Menu {
-        id: sidetoneMenu
-        title: "Sidetone"
-        QQC2.MenuItem { text: "Desligado"; onTriggered: root.runControl("sidetone", "off") }
-        QQC2.MenuItem { text: "Baixo"; onTriggered: root.runControl("sidetone", "low") }
-        QQC2.MenuItem { text: "Médio"; onTriggered: root.runControl("sidetone", "medium") }
-        QQC2.MenuItem { text: "Alto"; onTriggered: root.runControl("sidetone", "high") }
     }
 
     Timer {

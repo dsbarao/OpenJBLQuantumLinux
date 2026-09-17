@@ -19,6 +19,8 @@ First usable read-only Linux release for the JBL Quantum 810:
   state with a lightning indicator in the Plasma widget;
 - add strictly allowlisted USB controls for ambient mode, global lighting, and
   sidetone, exposed as menus in the Plasma widget;
+- replace floating control menus with polished in-widget expandable sections
+  and keep the panel icon compact by moving the percentage into the detail view;
 - document controlled QuantumENGINE/USBPcap protocol findings.
 
 There is no SET_FEATURE, Output Report, firmware, reset, or arbitrary command
