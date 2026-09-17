@@ -48,9 +48,25 @@ PlasmoidItem {
     }
 
     function runControl(feature, value) {
+        clearAction.stop()
         actionMessage = "Aplicando…"
         const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} ${value}"`
         executable.connectSource(controlCommand)
+    }
+
+    function ambientLabel(value) {
+        if (value === "off") return "Desligado"
+        if (value === "anc") return "ANC"
+        if (value === "talkthru") return "TalkThru"
+        return "Aguardando estado"
+    }
+
+    function sidetoneLabel(value) {
+        if (value === "off") return "Desligado"
+        if (value === "low") return "Baixo"
+        if (value === "medium") return "Médio"
+        if (value === "high") return "Alto"
+        return "Aguardando estado"
     }
 
     function applyResult(data) {
@@ -171,20 +187,20 @@ PlasmoidItem {
         Layout.minimumHeight: Kirigami.Units.gridUnit * 19
         Layout.preferredWidth: Kirigami.Units.gridUnit * 21
         Layout.preferredHeight: Kirigami.Units.gridUnit * 21
-        spacing: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.smallSpacing
 
         Kirigami.Icon {
             source: "audio-headphones"
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: Kirigami.Units.iconSizes.huge
-            Layout.preferredHeight: Kirigami.Units.iconSizes.huge
+            Layout.preferredWidth: Kirigami.Units.iconSizes.large
+            Layout.preferredHeight: Kirigami.Units.iconSizes.large
         }
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignHCenter
             text: root.batteryPercent >= 0 ? `${root.batteryPercent}%` : "Indisponível"
             color: root.batteryColor
-            font.pixelSize: Kirigami.Units.gridUnit * 2
+            font.pixelSize: Kirigami.Units.gridUnit * 1.7
             font.bold: true
         }
 
@@ -195,7 +211,7 @@ PlasmoidItem {
             PlasmaComponents.Label {
                 text: root.headsetConnected === null
                     ? "Headset: aguardando"
-                    : root.headsetConnected ? "● Headset ligado" : "○ Headset desligado"
+                    : root.headsetConnected ? "● Ligado" : "○ Desligado"
                 color: root.headsetConnected === true
                     ? Kirigami.Theme.positiveTextColor
                     : Kirigami.Theme.disabledTextColor
@@ -205,7 +221,7 @@ PlasmoidItem {
             PlasmaComponents.Label {
                 text: root.microphoneState === "active"
                     ? "● Microfone ativo"
-                    : root.microphoneState === "muted" ? "● Microfone mudo" : "Microfone: aguardando"
+                    : root.microphoneState === "muted" ? "● Microfone mudo" : "Microfone aguardando"
                 color: root.microphoneState === "muted"
                     ? Kirigami.Theme.negativeTextColor
                     : root.microphoneState === "active"
@@ -304,7 +320,7 @@ PlasmoidItem {
             }
 
             PlasmaComponents.Button {
-                text: "Sidetone"
+                text: "Retorno"
                 icon.name: "microphone-sensitivity-high"
                 checkable: true
                 checked: root.openSection === "sidetone"
@@ -338,10 +354,10 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     Layout.alignment: Qt.AlignHCenter
                     text: root.openSection === "ambient"
-                        ? root.ambientMode === "unknown" ? "Estado desconhecido" : `Atual: ${root.ambientMode}`
+                        ? `Atual: ${root.ambientLabel(root.ambientMode)}`
                         : root.openSection === "lighting"
-                            ? root.lightingEnabled === null ? "Estado desconhecido" : root.lightingEnabled ? "Atual: ligada" : "Atual: desligada"
-                            : root.sidetoneLevel === "unknown" ? "Estado desconhecido" : `Atual: ${root.sidetoneLevel}`
+                            ? root.lightingEnabled === null ? "Aguardando estado" : root.lightingEnabled ? "Atual: ligada" : "Atual: desligada"
+                            : `Atual: ${root.sidetoneLabel(root.sidetoneLevel)}`
                     opacity: 0.7
                 }
 
@@ -401,6 +417,7 @@ PlasmoidItem {
                 if (exitCode === 0) {
                     root.errorMessage = ""
                     root.actionMessage = "Configuração aplicada"
+                    clearAction.restart()
                     refreshAfterControl.restart()
                 } else {
                     root.errorMessage = stderr || "Falha ao aplicar configuração"
@@ -430,6 +447,13 @@ PlasmoidItem {
         interval: 300
         repeat: false
         onTriggered: root.refresh()
+    }
+
+    Timer {
+        id: clearAction
+        interval: 1800
+        repeat: false
+        onTriggered: root.actionMessage = ""
     }
 
     Timer {
