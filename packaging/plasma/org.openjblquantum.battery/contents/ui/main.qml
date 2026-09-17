@@ -62,6 +62,10 @@ PlasmoidItem {
 
         implicitWidth: compactLayout.implicitWidth + Kirigami.Units.smallSpacing * 2
         implicitHeight: Math.max(compactLayout.implicitHeight, 24)
+        Layout.minimumWidth: implicitWidth
+        Layout.preferredWidth: implicitWidth
+        Layout.minimumHeight: implicitHeight
+        Layout.preferredHeight: implicitHeight
         onClicked: root.expanded = !root.expanded
 
         RowLayout {
@@ -150,7 +154,7 @@ PlasmoidItem {
             horizontalAlignment: Text.AlignHCenter
             text: root.errorMessage.length > 0
                 ? root.errorMessage
-                : root.rawFeature.length > 0 ? `Feature Report: ${root.rawFeature}` : "Somente leitura"
+                : "JBL Quantum 810 · leitura segura"
             wrapMode: Text.Wrap
             opacity: 0.7
         }
