@@ -162,7 +162,22 @@ tools/install-user.sh
 ```
 
 The helper does not install the privileged udev rule and does not restart the
-Plasma shell. For manual widget installation, use:
+Plasma shell.
+
+To preview exactly what the user-level uninstaller would remove, run:
+
+```bash
+tools/uninstall-user.sh --check
+```
+
+Removal requires the explicit `--confirm` flag. It preserves the repository,
+captures, documentation, and the system-wide udev rule:
+
+```bash
+tools/uninstall-user.sh --confirm
+```
+
+For manual widget installation, use:
 
 ```bash
 kpackagetool6 --type Plasma/Applet --install \
