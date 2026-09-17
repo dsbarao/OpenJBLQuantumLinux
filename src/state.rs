@@ -1,10 +1,13 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use zbus::blocking::Connection;
+
+static SIGNAL_CONNECTION: OnceLock<Connection> = OnceLock::new();
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub struct RuntimeState {
@@ -104,17 +107,27 @@ pub fn save(state: &mut RuntimeState) -> Result<(), String> {
     Ok(())
 }
 
+pub fn init_signal_service() -> Result<(), String> {
+    let connection = Connection::session().map_err(|error| error.to_string())?;
+    connection
+        .request_name("org.openjblquantum.State")
+        .map_err(|error| error.to_string())?;
+    SIGNAL_CONNECTION
+        .set(connection)
+        .map_err(|_| "D-Bus signal service already initialized".to_string())
+}
+
 fn emit_changed_signal() {
-    let _ = Command::new("gdbus")
-        .args([
-            "emit",
-            "--session",
-            "--object-path",
-            "/org/openjblquantum/State",
-            "--signal",
-            "org.openjblquantum.State.Changed",
-        ])
-        .status();
+    let Some(connection) = SIGNAL_CONNECTION.get() else {
+        return;
+    };
+    let _ = connection.emit_signal(
+        None::<&str>,
+        "/org/openjblquantum/State",
+        "org.openjblquantum.State",
+        "Changed",
+        &(),
+    );
 }
 
 pub fn update_control(feature: &str, value: &str) -> Result<(), String> {

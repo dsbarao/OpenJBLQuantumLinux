@@ -618,6 +618,7 @@ fn monitor(dry_run: bool) -> Result<bool, String> {
 }
 
 fn daemon() -> Result<bool, String> {
+    state::init_signal_service()?;
     let mut runtime = state::load().unwrap_or_default();
     loop {
         let Some(node) = quantum_hidraw_node()? else {

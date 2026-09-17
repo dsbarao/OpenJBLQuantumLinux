@@ -8,3 +8,4 @@ description = "Safe Linux discovery and control tooling for JBL Quantum devices"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+zbus = "5"

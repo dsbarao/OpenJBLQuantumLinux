@@ -388,7 +388,7 @@ PlasmoidItem {
 
     DBus.SignalWatcher {
         busType: DBus.BusType.Session
-        service: ""
+        service: "org.openjblquantum.State"
         path: "/org/openjblquantum/State"
         iface: "org.openjblquantum.State"
         enabled: true
