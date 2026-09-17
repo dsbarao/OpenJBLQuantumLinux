@@ -265,6 +265,19 @@ pub fn interpret_input(bytes: &[u8]) -> Option<String> {
     }
 }
 
+pub fn battery_from_feature(bytes: &[u8]) -> Result<u8, String> {
+    match bytes {
+        [0x49, percentage @ 0x00..=0x64] => Ok(*percentage),
+        [0x49, percentage] => Err(format!(
+            "battery Feature Report returned out-of-range value {percentage}"
+        )),
+        [report_id, ..] => Err(format!(
+            "expected battery Feature Report 0x49, got 0x{report_id:02x}"
+        )),
+        [] => Err("battery Feature Report was empty".into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,5 +352,13 @@ mod tests {
             Some("phone-mute-usage=asserted".into())
         );
         assert_eq!(interpret_input(&[0x08, 0x5a]), Some("battery=90%".into()));
+    }
+
+    #[test]
+    fn validates_battery_feature_report() {
+        assert_eq!(battery_from_feature(&[0x49, 0x55]), Ok(85));
+        assert!(battery_from_feature(&[0x49, 0x65]).is_err());
+        assert!(battery_from_feature(&[0x48, 0x55]).is_err());
+        assert!(battery_from_feature(&[]).is_err());
     }
 }

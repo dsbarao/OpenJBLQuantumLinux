@@ -1,6 +1,8 @@
 use std::env;
 use std::fs;
+use std::fs::OpenOptions;
 use std::io::{self, Read};
+use std::os::fd::AsRawFd;
 use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,6 +15,25 @@ mod hid;
 const USB_ROOT: &str = "/sys/bus/usb/devices";
 const JBL_VENDOR_ID: &str = "0ecb";
 const QUANTUM_810_PRODUCT_ID: &str = "2069";
+const BATTERY_FEATURE_REPORT_ID: u8 = 0x49;
+const BATTERY_FEATURE_REPORT_LEN: usize = 2;
+
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    fn ioctl(fd: std::ffi::c_int, request: std::ffi::c_ulong, data: *mut u8) -> std::ffi::c_int;
+}
+
+#[cfg(target_os = "linux")]
+const fn hidiocgfeature(length: usize) -> std::ffi::c_ulong {
+    const IOC_WRITE: std::ffi::c_ulong = 1;
+    const IOC_READ: std::ffi::c_ulong = 2;
+    const IOC_SIZE_SHIFT: u32 = 16;
+    const IOC_DIR_SHIFT: u32 = 30;
+    ((IOC_READ | IOC_WRITE) << IOC_DIR_SHIFT)
+        | ((length as std::ffi::c_ulong) << IOC_SIZE_SHIFT)
+        | ((b'H' as std::ffi::c_ulong) << 8)
+        | 0x07
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct Endpoint {
@@ -514,11 +535,86 @@ fn monitor(dry_run: bool) -> Result<bool, String> {
     }
 }
 
+fn read_feature_report_read_only(
+    node: &Path,
+    report_id: u8,
+    length: usize,
+) -> Result<Vec<u8>, String> {
+    if length == 0 {
+        return Err("Feature Report length must include the report ID".into());
+    }
+    let metadata = fs::metadata(node).map_err(|error| format!("{}: {error}", node.display()))?;
+    if !metadata.file_type().is_char_device() {
+        return Err(format!("refusing non-character device: {}", node.display()));
+    }
+    let device = OpenOptions::new().read(true).open(node).map_err(|error| {
+        if error.kind() == io::ErrorKind::PermissionDenied {
+            format!(
+                "{}: permission denied; install the repository's narrow udev rule, then reconnect the dongle",
+                node.display()
+            )
+        } else {
+            format!("{}: {error}", node.display())
+        }
+    })?;
+    let mut buffer = vec![0_u8; length];
+    buffer[0] = report_id;
+    #[cfg(target_os = "linux")]
+    // SAFETY: `device` remains open for the call, `buffer` is writable for the
+    // exact length encoded in the ioctl, and HIDIOCGFEATURE is a GET_REPORT
+    // operation. This function has no SET_REPORT or write path.
+    let count = unsafe {
+        ioctl(
+            device.as_raw_fd(),
+            hidiocgfeature(buffer.len()),
+            buffer.as_mut_ptr(),
+        )
+    };
+    #[cfg(not(target_os = "linux"))]
+    let count = -1;
+    if count < 0 {
+        return Err(format!(
+            "HIDIOCGFEATURE 0x{report_id:02x} failed: {}",
+            io::Error::last_os_error()
+        ));
+    }
+    buffer.truncate(count as usize);
+    Ok(buffer)
+}
+
+fn status(dry_run: bool) -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    println!("matched JBL Quantum 810 HID node: {}", node.display());
+    println!("access mode: read-only HID GET_FEATURE (no SET_FEATURE/output reports)");
+    if dry_run {
+        let metadata =
+            fs::metadata(&node).map_err(|error| format!("{}: {error}", node.display()))?;
+        if !metadata.file_type().is_char_device() {
+            return Err(format!("refusing non-character device: {}", node.display()));
+        }
+        println!(
+            "dry run: would read Feature Report 0x{BATTERY_FEATURE_REPORT_ID:02x} ({BATTERY_FEATURE_REPORT_LEN} bytes); no device opened"
+        );
+        return Ok(true);
+    }
+    let report = read_feature_report_read_only(
+        &node,
+        BATTERY_FEATURE_REPORT_ID,
+        BATTERY_FEATURE_REPORT_LEN,
+    )?;
+    let battery = hid::battery_from_feature(&report)?;
+    println!("battery: {battery}%");
+    println!("raw feature: {}", format_hid_report(&report));
+    Ok(true)
+}
+
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run]|export --format json>"
     );
-    eprintln!("both commands are passive and read only from Linux sysfs");
+    eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
 }
 
 fn main() {
@@ -529,6 +625,7 @@ fn main() {
         "inspect" => inspect(),
         "hid-descriptor" => hid_descriptor(),
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
+        "status" => status(args.next().as_deref() == Some("--dry-run")),
         "export"
             if args.next().as_deref() == Some("--format")
                 && args.next().as_deref() == Some("json") =>
@@ -598,5 +695,11 @@ mod tests {
         };
         assert_eq!(endpoint.direction(), "IN");
         assert_eq!(endpoint.transfer_type(), "isochronous");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn builds_linux_get_feature_ioctl_number() {
+        assert_eq!(hidiocgfeature(2), 0xc002_4807);
     }
 }

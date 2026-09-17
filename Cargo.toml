@@ -3,7 +3,7 @@ name = "openjblquantum"
 version = "0.0.1"
 edition = "2024"
 license = "MIT"
-description = "Passive Linux discovery tooling for JBL Quantum devices"
+description = "Safe Linux discovery and control tooling for JBL Quantum devices"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

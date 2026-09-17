@@ -1,8 +1,8 @@
 # OpenJBLQuantum
 
 Open-source Linux tooling for JBL Quantum headsets, initially focused on the
-JBL Quantum 810 wireless dongle. The first milestone is intentionally narrow:
-detect the device and document its USB topology without sending data to it.
+JBL Quantum 810 wireless dongle. The project began with safe device detection
+and now includes documented, allowlisted read-only status queries.
 
 ## Current status
 
@@ -13,19 +13,23 @@ five USB Audio-class interfaces and one HID-class interface. See
 
 Passive experiments have confirmed Input Reports for headset presence,
 noise-control mode, Bluetooth state, microphone mute, and the 15-position
-Game/Chat dial. Battery percentage remains a strong hypothesis, not a confirmed
-mapping. The evidence ledger links every conclusion to its experiment.
+Game/Chat dial. Battery percentage and selected QuantumENGINE controls have
+been confirmed through controlled USBPcap comparisons. The evidence ledger
+links every conclusion to its experiment.
 
 ## Safety boundary
 
-The repository currently permits passive discovery only:
+The repository currently permits passive discovery plus one allowlisted status
+read:
 
 - read Linux `sysfs` and udev metadata;
 - inspect descriptors already exported by the kernel;
 - enumerate ALSA/PipeWire nodes when accessible;
 - never open `/dev/hidraw*` or `/dev/bus/usb/*` for writing;
-- never issue USB control transfers, HID feature/output reports, resets,
-  detach drivers, firmware operations, or guessed commands.
+- query only battery Feature Report `0x49` through Linux `HIDIOCGFEATURE`;
+- open hidraw read-only and provide no SET_FEATURE or output-report API;
+- never issue device writes, resets, driver detach, firmware operations, or
+  guessed commands.
 
 Any future active experiment must first be documented with provenance,
 expected bytes, rollback/risk analysis, and explicit opt-in.
@@ -61,6 +65,7 @@ cargo run -- scan
 cargo run -- inspect
 cargo run -- hid-descriptor
 cargo run -- monitor --dry-run
+cargo run -- status --dry-run
 cargo run -- export --format json
 ```
 
@@ -107,6 +112,11 @@ opening it. `monitor` uses a read-only file handle and prints only spontaneous
 Input Reports until interrupted with Ctrl-C. It contains no write path and
 does not issue HID ioctls or USB control requests. Confirmed report meanings
 are appended as annotations while the original bytes remain visible.
+
+`status --dry-run` validates the matched character device without opening it.
+`status` opens hidraw read-only and performs only the allowlisted
+`HIDIOCGFEATURE` read for Report `0x49`, then validates and prints battery
+percentage. The code contains no SET_FEATURE or output-report path.
 
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
