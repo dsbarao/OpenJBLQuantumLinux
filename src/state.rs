@@ -27,47 +27,33 @@ impl RuntimeState {
     pub fn apply_input(&mut self, report: &[u8]) -> bool {
         let changed = match report {
             [0x02, value @ 0x00..=0x02] => {
-                self.ambient_mode = Some(
-                    match value {
-                        0 => "off",
-                        1 => "anc",
-                        _ => "talkthru",
-                    }
-                    .into(),
-                );
-                true
+                let value = match value {
+                    0 => "off",
+                    1 => "anc",
+                    _ => "talkthru",
+                };
+                replace_if_changed(&mut self.ambient_mode, value.into())
             }
             [0x03, value @ 0x00..=0x02] => {
-                self.bluetooth = Some(
-                    match value {
-                        0 => "disconnected",
-                        1 => "connected",
-                        _ => "pairing",
-                    }
-                    .into(),
-                );
-                true
+                let value = match value {
+                    0 => "disconnected",
+                    1 => "connected",
+                    _ => "pairing",
+                };
+                replace_if_changed(&mut self.bluetooth, value.into())
             }
             [0x06, value @ 0x00..=0x01] => {
-                self.microphone = Some(if *value == 0 { "muted" } else { "active" }.into());
-                true
+                let value = if *value == 0 { "muted" } else { "active" };
+                replace_if_changed(&mut self.microphone, value.into())
             }
             [0x07, value @ 0x00..=0x01] => {
-                self.lighting_enabled = Some(*value == 1);
-                true
+                replace_if_changed(&mut self.lighting_enabled, *value == 1)
             }
-            [0x08, value @ 0x00..=0x64] => {
-                self.battery_percent = Some(*value);
-                true
-            }
+            [0x08, value @ 0x00..=0x64] => replace_if_changed(&mut self.battery_percent, *value),
             [0x09, value @ 0x00..=0x01] => {
-                self.headset_connected = Some(*value == 1);
-                true
+                replace_if_changed(&mut self.headset_connected, *value == 1)
             }
-            [0x10, value @ 0x00..=0x10] => {
-                self.game_chat_value = Some(*value);
-                true
-            }
+            [0x10, value @ 0x00..=0x10] => replace_if_changed(&mut self.game_chat_value, *value),
             _ => false,
         };
         if changed {
@@ -80,6 +66,15 @@ impl RuntimeState {
         self.updated_at_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(0, |duration| duration.as_millis());
+    }
+}
+
+fn replace_if_changed<T: PartialEq>(slot: &mut Option<T>, value: T) -> bool {
+    if slot.as_ref() == Some(&value) {
+        false
+    } else {
+        *slot = Some(value);
+        true
     }
 }
 
@@ -154,6 +149,7 @@ mod tests {
         assert_eq!(state.lighting_enabled, Some(true));
         assert!(state.apply_input(&[0x08, 75]));
         assert_eq!(state.battery_percent, Some(75));
+        assert!(!state.apply_input(&[0x08, 75]));
         assert!(!state.apply_input(&[0xff, 0x01]));
     }
 }

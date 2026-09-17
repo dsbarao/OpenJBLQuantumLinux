@@ -622,8 +622,10 @@ fn daemon() -> Result<bool, String> {
     let mut runtime = state::load().unwrap_or_default();
     loop {
         let Some(node) = quantum_hidraw_node()? else {
-            runtime.headset_connected = Some(false);
-            state::save(&mut runtime)?;
+            if runtime.headset_connected != Some(false) {
+                runtime.headset_connected = Some(false);
+                state::save(&mut runtime)?;
+            }
             thread::sleep(Duration::from_secs(2));
             continue;
         };

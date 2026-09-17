@@ -19,11 +19,15 @@ PlasmoidItem {
     property string actionMessage: ""
     property string openSection: ""
     property string ambientMode: "unknown"
+    property var headsetConnected: null
+    property string microphoneState: "unknown"
     property string sidetoneLevel: "unknown"
     property var lightingEnabled: null
     property int gameChatValue: -1
     property bool updating: false
-    readonly property color batteryColor: charging
+    readonly property color batteryColor: headsetConnected === false && !charging
+        ? Kirigami.Theme.disabledTextColor
+        : charging
         ? "#22d3ee"
         : batteryPercent < 0
         ? Kirigami.Theme.disabledTextColor
@@ -56,6 +60,9 @@ PlasmoidItem {
         if (exitCode !== 0) {
             batteryPercent = -1
             charging = false
+            headsetConnected = false
+            microphoneState = "unknown"
+            ambientMode = "unknown"
             errorMessage = stderr || "Headset não encontrado"
             return
         }
@@ -69,6 +76,8 @@ PlasmoidItem {
             charging = result.charging === true
             rawFeature = String(result.raw_feature ?? "")
             ambientMode = String(result.ambient_mode ?? "unknown")
+            headsetConnected = result.headset_connected ?? null
+            microphoneState = String(result.microphone ?? "unknown")
             sidetoneLevel = String(result.sidetone_level ?? "unknown")
             lightingEnabled = result.lighting_enabled ?? null
             gameChatValue = result.game_chat_value === null ? -1 : Number(result.game_chat_value)
@@ -177,6 +186,33 @@ PlasmoidItem {
             color: root.batteryColor
             font.pixelSize: Kirigami.Units.gridUnit * 2
             font.bold: true
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Kirigami.Units.largeSpacing
+
+            PlasmaComponents.Label {
+                text: root.headsetConnected === null
+                    ? "Headset: aguardando"
+                    : root.headsetConnected ? "● Headset ligado" : "○ Headset desligado"
+                color: root.headsetConnected === true
+                    ? Kirigami.Theme.positiveTextColor
+                    : Kirigami.Theme.disabledTextColor
+                font.bold: root.headsetConnected === true
+            }
+
+            PlasmaComponents.Label {
+                text: root.microphoneState === "active"
+                    ? "● Microfone ativo"
+                    : root.microphoneState === "muted" ? "● Microfone mudo" : "Microfone: aguardando"
+                color: root.microphoneState === "muted"
+                    ? Kirigami.Theme.negativeTextColor
+                    : root.microphoneState === "active"
+                        ? Kirigami.Theme.positiveTextColor
+                        : Kirigami.Theme.disabledTextColor
+                font.bold: root.microphoneState !== "unknown"
+            }
         }
 
         PlasmaComponents.Label {
