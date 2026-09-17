@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=JBL Quantum 810 Battery
+Comment=Show the headset battery level
+Exec=openjblquantum notify
+Icon=audio-headphones
+Terminal=false
+Categories=Utility;AudioVideo;Audio;
+Keywords=JBL;Quantum;headset;battery;

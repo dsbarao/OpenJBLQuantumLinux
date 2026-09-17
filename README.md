@@ -67,6 +67,7 @@ cargo run -- hid-descriptor
 cargo run -- monitor --dry-run
 cargo run -- status --dry-run
 cargo run -- status --format json
+cargo run -- notify --dry-run
 cargo run -- export --format json
 ```
 
@@ -124,6 +125,21 @@ SET_FEATURE or output-report path.
 versioned object suitable for scripts and desktop widgets. It can be combined
 with `--dry-run`; in that mode the battery fields are `null` and the device is
 not opened.
+
+`notify` performs the same single battery read and displays it through the
+desktop notification service (`notify-send`). At 20% or below the notification
+uses critical urgency. `notify --dry-run` does not open the device or display a
+notification.
+
+An optional KDE application launcher is included. Install it for the current
+user after installing the CLI:
+
+```bash
+install -Dm644 packaging/kde/openjblquantum-battery.desktop \
+  "$HOME/.local/share/applications/openjblquantum-battery.desktop"
+```
+
+It then appears in the application menu as **JBL Quantum 810 Battery**.
 
 If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:

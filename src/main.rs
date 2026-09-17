@@ -5,6 +5,7 @@ use std::io::{self, Read};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::ser::SerializeStruct;
@@ -634,6 +635,13 @@ fn print_status_json(output: &StatusOutput) -> Result<(), String> {
     Ok(())
 }
 
+fn query_battery(node: &Path) -> Result<(u8, String), String> {
+    let report =
+        read_feature_report_read_only(node, BATTERY_FEATURE_REPORT_ID, BATTERY_FEATURE_REPORT_LEN)?;
+    let battery = hid::battery_from_feature(&report)?;
+    Ok((battery, format_hid_report(&report)))
+}
+
 fn status(options: StatusOptions) -> Result<bool, String> {
     let Some(node) = quantum_hidraw_node()? else {
         return Ok(false);
@@ -665,13 +673,7 @@ fn status(options: StatusOptions) -> Result<bool, String> {
         }
         return Ok(true);
     }
-    let report = read_feature_report_read_only(
-        &node,
-        BATTERY_FEATURE_REPORT_ID,
-        BATTERY_FEATURE_REPORT_LEN,
-    )?;
-    let battery = hid::battery_from_feature(&report)?;
-    let raw_feature = format_hid_report(&report);
+    let (battery, raw_feature) = query_battery(&node)?;
     if options.json {
         print_status_json(&StatusOutput {
             schema: 1,
@@ -689,9 +691,38 @@ fn status(options: StatusOptions) -> Result<bool, String> {
     Ok(true)
 }
 
+fn notify(dry_run: bool) -> Result<bool, String> {
+    let Some(node) = quantum_hidraw_node()? else {
+        return Ok(false);
+    };
+    if dry_run {
+        println!(
+            "dry run: would read Feature Report 0x{BATTERY_FEATURE_REPORT_ID:02x} and show a KDE notification; no device opened"
+        );
+        return Ok(true);
+    }
+    let (battery, _) = query_battery(&node)?;
+    let urgency = if battery <= 20 { "critical" } else { "normal" };
+    let process = Command::new("notify-send")
+        .args([
+            "--app-name=OpenJBLQuantum",
+            "--icon=audio-headphones",
+            &format!("--urgency={urgency}"),
+            "JBL Quantum 810",
+            &format!("Bateria: {battery}%"),
+        ])
+        .status()
+        .map_err(|error| format!("could not start notify-send: {error}"))?;
+    if !process.success() {
+        return Err(format!("notify-send exited with {process}"));
+    }
+    println!("notification sent: battery {battery}%");
+    Ok(true)
+}
+
 fn usage() {
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|export --format json>"
+        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|status [--dry-run] [--format json]|notify [--dry-run]|export --format json>"
     );
     eprintln!("status uses read-only HID GET_FEATURE; no command implements device writes");
 }
@@ -705,6 +736,7 @@ fn main() {
         "hid-descriptor" => hid_descriptor(),
         "monitor" => monitor(args.next().as_deref() == Some("--dry-run")),
         "status" => parse_status_options(args).and_then(status),
+        "notify" => notify(args.next().as_deref() == Some("--dry-run")),
         "export"
             if args.next().as_deref() == Some("--format")
                 && args.next().as_deref() == Some("json") =>
