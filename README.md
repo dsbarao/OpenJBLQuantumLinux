@@ -310,4 +310,7 @@ Do not submit firmware, proprietary binaries, personal identifiers, or raw
 captures that may include unrelated USB traffic. Prefer small sanitized byte
 sequences with timestamps removed and document hardware/firmware versions.
 
+For collaboration, bug reports, or responsible disclosure of a safety concern,
+open a GitHub issue or contact [janbalinux@gmail.com](mailto:janbalinux@gmail.com).
+
 Licensed under the MIT License.

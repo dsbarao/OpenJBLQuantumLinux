@@ -34,6 +34,5 @@ are intentionally preserved.
 
 ## License attribution
 
-The `OpenJBLQuantum contributors` copyright line in `LICENSE` is retained as
-historical legal attribution. It is not an active technical identifier and the
-MIT license text is unchanged.
+The MIT license identifies Daniel Barão as the copyright holder. The license
+text is otherwise unchanged.
