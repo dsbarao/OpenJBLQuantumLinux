@@ -3,13 +3,13 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-readonly PLASMOID_ID="org.openjblquantum.battery"
+readonly PLASMOID_ID="org.janbalinux.soniccore"
 readonly PLASMOID_SOURCE="$PROJECT_DIR/packaging/plasma/$PLASMOID_ID"
 readonly PLASMOID_TARGET="$HOME/.local/share/plasma/plasmoids/$PLASMOID_ID"
-readonly SERVICE_SOURCE="$PROJECT_DIR/packaging/systemd/openjblquantum-state.service"
-readonly SERVICE_TARGET="$HOME/.config/systemd/user/openjblquantum-state.service"
-readonly LAUNCHER_SOURCE="$PROJECT_DIR/packaging/kde/openjblquantum-battery.desktop"
-readonly LAUNCHER_TARGET="$HOME/.local/share/applications/openjblquantum-battery.desktop"
+readonly SERVICE_SOURCE="$PROJECT_DIR/packaging/systemd/janbalinux-soniccore.service"
+readonly SERVICE_TARGET="$HOME/.config/systemd/user/janbalinux-soniccore.service"
+readonly LAUNCHER_SOURCE="$PROJECT_DIR/packaging/kde/janbalinux-soniccore.desktop"
+readonly LAUNCHER_TARGET="$HOME/.local/share/applications/janbalinux-soniccore.desktop"
 
 fail() {
     printf 'erro: %s\n' "$*" >&2
@@ -32,7 +32,7 @@ check_prerequisites() {
 
 if [[ "${1:-}" == "--check" ]]; then
     check_prerequisites
-    printf 'Pré-requisitos do OpenJBLQuantum verificados. Nenhuma alteração foi feita.\n'
+    printf 'Pré-requisitos do JanBaLinux SonicCore verificados. Nenhuma alteração foi feita.\n'
     exit 0
 fi
 
@@ -40,7 +40,7 @@ fi
 check_prerequisites
 
 cd -- "$PROJECT_DIR"
-cargo install --path . --force
+cargo install --path . --bins --force
 
 if [[ -d "$PLASMOID_TARGET" ]]; then
     kpackagetool6 --type Plasma/Applet --upgrade "$PLASMOID_SOURCE"
@@ -51,8 +51,8 @@ fi
 install -Dm644 "$SERVICE_SOURCE" "$SERVICE_TARGET"
 install -Dm644 "$LAUNCHER_SOURCE" "$LAUNCHER_TARGET"
 systemctl --user daemon-reload
-systemctl --user enable --now openjblquantum-state.service
+systemctl --user enable --now janbalinux-soniccore.service
 
-printf '\nOpenJBLQuantum instalado para o usuário atual.\n'
+printf '\nJanBaLinux SonicCore instalado para o usuário atual.\n'
 printf 'O Plasma não foi reiniciado automaticamente.\n'
 printf 'A regra udev privilegiada também não foi alterada. Consulte o README se houver erro de permissão.\n'

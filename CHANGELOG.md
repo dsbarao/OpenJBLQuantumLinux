@@ -2,6 +2,12 @@
 
 ## 0.2.0 — unreleased
 
+- rebrand the project and desktop presentation as JanBaLinux SonicCore;
+- preserve installed CLI, service, Plasma, D-Bus, and cache identifiers for
+  compatibility; document future migration in `docs/rebranding.md`;
+- retain hardware/protocol names and research evidence, and describe future
+  audio platform scope without implementing new functionality.
+
 - control synchronized, Logo-only, or Ring-only solid colors from the widget;
 - replace the fixed swatches with an embedded HSV wheel and saturation/value
   field, accepting any strictly validated `#RRGGBB` color;

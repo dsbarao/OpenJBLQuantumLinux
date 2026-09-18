@@ -1,8 +1,10 @@
 # Protocol research
 
 Early HID protocol mappings are now documented through controlled passive
-observations and QuantumENGINE USBPcap comparisons. Linux support remains
-read-only; observed vendor writes are documented but are not replayed.
+observations and QuantumENGINE USBPcap comparisons. JanBaLinux SonicCore
+implements only the confirmed controls in its strict allowlist. Other observed
+vendor writes remain research documentation and must not be replayed blindly.
+Experiment notes preserve the scope and observations at the time of each capture.
 
 Current consolidated mappings:
 
