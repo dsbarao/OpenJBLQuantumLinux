@@ -5,6 +5,9 @@ research. The first supported device is the JBL Quantum 810 Wireless. Keep
 software branding separate from actual hardware and protocol names; see
 [rebranding](docs/rebranding.md).
 
+For collaboration or bug reports, open a GitHub issue. For responsible
+disclosure of a safety concern, contact [janbalinux@gmail.com](mailto:janbalinux@gmail.com).
+
 Before submitting a change:
 
 ```bash
