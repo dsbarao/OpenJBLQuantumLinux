@@ -1,10 +1,17 @@
 [package]
-# Compatibility: keep the installed package and CLI name; see docs/rebranding.md.
-name = "openjblquantum"
+name = "janbalinux-soniccore"
 version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "JanBaLinux SonicCore — open-source gaming headset control and audio platform for Linux"
+
+[[bin]]
+name = "soniccore"
+path = "src/main.rs"
+
+[[bin]]
+name = "soniccore-daemon"
+path = "src/bin/soniccore-daemon.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

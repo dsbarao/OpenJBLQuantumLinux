@@ -11,7 +11,7 @@ import org.kde.plasma.workspace.dbus as DBus
 PlasmoidItem {
     id: root
 
-    readonly property string command: "/bin/sh -lc \"$HOME/.cargo/bin/openjblquantum status --format json\""
+    readonly property string command: "/bin/sh -lc \"$HOME/.cargo/bin/soniccore status --format json\""
     readonly property url equipmentImage: Qt.resolvedUrl("../images/jbl-quantum-810.png")
     property int batteryPercent: -1
     property bool charging: false
@@ -64,7 +64,7 @@ PlasmoidItem {
         controlBusy = true
         clearAction.stop()
         actionMessage = "Aplicando…"
-        const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/openjblquantum set ${feature} '${value}'"`
+        const controlCommand = `/bin/sh -lc "$HOME/.cargo/bin/soniccore set ${feature} '${value}'"`
         executable.connectSource(controlCommand)
     }
 
@@ -746,9 +746,9 @@ PlasmoidItem {
 
     DBus.SignalWatcher {
         busType: DBus.BusType.Session
-        service: "org.openjblquantum.State"
-        path: "/org/openjblquantum/State"
-        iface: "org.openjblquantum.State"
+        service: "org.janbalinux.soniccore.State"
+        path: "/org/janbalinux/soniccore/State"
+        iface: "org.janbalinux.soniccore.State"
         enabled: true
 
         function dbusChanged() {
@@ -759,7 +759,7 @@ PlasmoidItem {
     DBus.DBusServiceWatcher {
         id: daemonWatcher
         busType: DBus.BusType.Session
-        watchedService: "org.openjblquantum.State"
+        watchedService: "org.janbalinux.soniccore.State"
 
         onRegisteredChanged: {
             if (registered) root.refresh()

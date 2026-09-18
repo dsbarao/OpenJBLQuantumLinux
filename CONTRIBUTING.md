@@ -3,7 +3,7 @@
 JanBaLinux SonicCore accepts reproducible, safety-scoped Linux headset
 research. The first supported device is the JBL Quantum 810 Wireless. Keep
 software branding separate from actual hardware and protocol names; see
-[rebranding and compatibility](docs/rebranding.md).
+[rebranding](docs/rebranding.md).
 
 Before submitting a change:
 
@@ -11,7 +11,7 @@ Before submitting a change:
 cargo fmt -- --check
 cargo test
 cargo clippy --all-targets -- -D warnings
-udevadm verify packaging/udev/70-openjblquantum.rules
+udevadm verify packaging/udev/70-janbalinux-soniccore.rules
 ```
 
 Protocol claims must link to an experiment in `docs/protocol/experiments/` and

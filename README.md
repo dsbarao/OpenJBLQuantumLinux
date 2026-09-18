@@ -11,9 +11,9 @@ and future Linux audio processing, including DSP/PipeWire integration.
 
 > JanBaLinux SonicCore is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Harman International or JBL. JBL, Quantum, and related product names are trademarks of their respective owners.
 
-The CLI is still named `openjblquantum` for installation compatibility. Existing
-commands, service names, widget IDs, and state paths remain valid; see
-[rebranding and compatibility](docs/rebranding.md).
+Technical identifiers use `janbalinux-soniccore`: the CLI is `soniccore`, the
+daemon is `soniccore-daemon`, and the service is `janbalinux-soniccore.service`.
+See [rebranding](docs/rebranding.md).
 
 ## Current status
 
@@ -60,7 +60,7 @@ ignored `work/` directory if a local snapshot is wanted.
 
 ### Rust CLI prerequisite on CachyOS
 
-The `openjblquantum` command does not exist until the project has been compiled
+The `soniccore` command does not exist until the project has been compiled
 and installed. On CachyOS, install `rustup` from an interactive terminal, then
 select the stable toolchain:
 
@@ -89,14 +89,14 @@ Only after that succeeds, optionally install the command for the current user:
 
 ```bash
 cargo install --path .
-openjblquantum scan
+soniccore scan
 ```
 
 After changing the source, replace an older installed development build with:
 
 ```bash
 cargo install --path . --force
-openjblquantum inspect
+soniccore inspect
 ```
 
 If Cargo reports a successful install but Fish cannot find the command, add
@@ -104,14 +104,14 @@ Cargo's user binary directory to Fish's persistent path and start a new shell:
 
 ```fish
 fish_add_path $HOME/.cargo/bin
-openjblquantum scan
+soniccore scan
 ```
 
 For a Bash session already open, update that session with:
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
-openjblquantum scan
+soniccore scan
 ```
 
 `inspect` reports the full standard USB interface/endpoint topology from the
@@ -154,8 +154,8 @@ An optional KDE application launcher is included. Install it for the current
 user after installing the CLI:
 
 ```bash
-install -Dm644 packaging/kde/openjblquantum-battery.desktop \
-  "$HOME/.local/share/applications/openjblquantum-battery.desktop"
+install -Dm644 packaging/kde/janbalinux-soniccore.desktop \
+  "$HOME/.local/share/applications/janbalinux-soniccore.desktop"
 ```
 
 It then appears in the application menu as **JanBaLinux SonicCore**.
@@ -196,19 +196,19 @@ For manual widget installation, use:
 
 ```bash
 kpackagetool6 --type Plasma/Applet --install \
-  packaging/plasma/org.openjblquantum.battery
+  packaging/plasma/org.janbalinux.soniccore
 ```
 
 For later development updates, use:
 
 ```bash
 kpackagetool6 --type Plasma/Applet --upgrade \
-  packaging/plasma/org.openjblquantum.battery
+  packaging/plasma/org.janbalinux.soniccore
 ```
 
 Then enter Plasma edit mode, choose **Add Widgets**, search for
 **JanBaLinux SonicCore**, and drag it to the panel. The widget invokes only
-allowlisted `openjblquantum` commands. Its popup includes expandable controls
+allowlisted `soniccore` commands. Its popup includes expandable controls
 for ambient mode (off/ANC/TalkThru), global lighting (on/off), an HSV color
 picker applied together or independently to the complete Logo and Ring
 profiles, and hardware sidetone
@@ -219,10 +219,10 @@ rejected by the CLI parser.
 For real-time state tracking, install and enable the user service:
 
 ```bash
-install -Dm644 packaging/systemd/openjblquantum-state.service \
-  "$HOME/.config/systemd/user/openjblquantum-state.service"
+install -Dm644 packaging/systemd/janbalinux-soniccore.service \
+  "$HOME/.config/systemd/user/janbalinux-soniccore.service"
 systemctl --user daemon-reload
-systemctl --user enable --now openjblquantum-state.service
+systemctl --user enable --now janbalinux-soniccore.service
 ```
 
 The service opens the confirmed Quantum 810 hidraw node read-only, records only
@@ -233,7 +233,7 @@ If the monitor reports permission denied, install the narrowly scoped udev
 rule and reconnect the dongle:
 
 ```bash
-sudo install -m 0644 packaging/udev/70-openjblquantum.rules /etc/udev/rules.d/70-openjblquantum.rules
+sudo install -m 0644 packaging/udev/70-janbalinux-soniccore.rules /etc/udev/rules.d/70-janbalinux-soniccore.rules
 sudo udevadm control --reload-rules
 ```
 
@@ -249,7 +249,7 @@ create a privileged daemon, or grant access to unrelated hidraw devices.
 - `docs/plan-v0.1.md`: milestone definition;
 - `tools/`: passive host/device inventory utilities;
 - `src/`: Linux CLI, HID parsing, allowlisted controls, and state service;
-- `docs/rebranding.md`: identity, compatibility decisions, and migration TODOs;
+- `docs/rebranding.md`: project identity and technical identifiers;
 - `captures/`: local capture staging; capture files are ignored by Git.
 
 ## Confirmed passive mappings

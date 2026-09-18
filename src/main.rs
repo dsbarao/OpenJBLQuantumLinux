@@ -237,7 +237,7 @@ fn charging_usb_connected() -> io::Result<bool> {
 
 fn spawn_charging_watcher() -> Result<(), String> {
     thread::Builder::new()
-        .name("openjblquantum-usb-power".into())
+        .name("soniccore-usb-power".into())
         .spawn(|| {
             let mut confirmed = state::load().and_then(|cached| cached.charging);
             let mut candidate = None;
@@ -1153,7 +1153,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 fn usage() {
     eprintln!("JanBaLinux SonicCore — gaming headset control for Linux");
     eprintln!(
-        "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|logo-color|ring-color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
+        "usage: soniccore <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|logo-color|ring-color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );
     eprintln!("set permits only confirmed two-byte Feature Reports from the built-in allowlist");
 }

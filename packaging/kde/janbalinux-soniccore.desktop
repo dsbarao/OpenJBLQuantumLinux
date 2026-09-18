@@ -2,7 +2,7 @@
 Type=Application
 Name=JanBaLinux SonicCore
 Comment=Show the JBL Quantum 810 Wireless battery level
-Exec=/bin/sh -lc "exec ~/.cargo/bin/openjblquantum show"
+Exec=/bin/sh -lc "exec ~/.cargo/bin/soniccore show"
 Icon=audio-headphones
 Terminal=false
 StartupNotify=false

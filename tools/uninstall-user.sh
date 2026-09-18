@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly PLASMOID_ID="org.openjblquantum.battery"
+readonly PLASMOID_ID="org.janbalinux.soniccore"
 readonly PLASMOID_TARGET="$HOME/.local/share/plasma/plasmoids/$PLASMOID_ID"
-readonly SERVICE_TARGET="$HOME/.config/systemd/user/openjblquantum-state.service"
-readonly LAUNCHER_TARGET="$HOME/.local/share/applications/openjblquantum-battery.desktop"
-readonly CARGO_BINARY="$HOME/.cargo/bin/openjblquantum"
+readonly SERVICE_TARGET="$HOME/.config/systemd/user/janbalinux-soniccore.service"
+readonly LAUNCHER_TARGET="$HOME/.local/share/applications/janbalinux-soniccore.desktop"
+readonly CARGO_BINARY="$HOME/.cargo/bin/soniccore"
 
 show_plan() {
     printf '%s\n' 'Componentes do usuário que serão removidos:'
@@ -29,7 +29,7 @@ fi
 
 show_plan
 
-systemctl --user disable --now openjblquantum-state.service 2>/dev/null || true
+systemctl --user disable --now janbalinux-soniccore.service 2>/dev/null || true
 
 if command -v kpackagetool6 >/dev/null 2>&1 && [[ -d "$PLASMOID_TARGET" ]]; then
     kpackagetool6 --type Plasma/Applet --remove "$PLASMOID_ID"
@@ -39,7 +39,7 @@ rm -f -- "$SERVICE_TARGET" "$LAUNCHER_TARGET"
 systemctl --user daemon-reload
 
 if command -v cargo >/dev/null 2>&1 && [[ -x "$CARGO_BINARY" ]]; then
-    cargo uninstall openjblquantum
+    cargo uninstall janbalinux-soniccore
 fi
 
 printf '%s\n' 'Componentes do JanBaLinux SonicCore instalados para o usuário foram removidos.'

@@ -14,7 +14,7 @@
 
 ## Initial scope
 
-`openjblquantum status` reads battery Feature Report `0x49` and prints both the
+`soniccore status` reads battery Feature Report `0x49` and prints both the
 validated percentage and raw two-byte response. Other captured Feature Reports
 remain documentation-only until independently mapped and allowlisted.
 
