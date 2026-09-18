@@ -42,5 +42,5 @@ if command -v cargo >/dev/null 2>&1 && [[ -x "$CARGO_BINARY" ]]; then
     cargo uninstall openjblquantum
 fi
 
-printf '%s\n' 'Componentes do OpenJBLQuantum instalados para o usuário foram removidos.'
+printf '%s\n' 'Componentes do JanBaLinux SonicCore instalados para o usuário foram removidos.'
 printf '%s\n' 'Reinicie o Plasma manualmente se o widget ainda aparecer no painel.'

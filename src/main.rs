@@ -1109,7 +1109,7 @@ fn notify(dry_run: bool) -> Result<bool, String> {
     let urgency = if battery <= 20 { "critical" } else { "normal" };
     let process = Command::new("notify-send")
         .args([
-            "--app-name=OpenJBLQuantum",
+            "--app-name=JanBaLinux SonicCore",
             "--icon=audio-headphones",
             &format!("--urgency={urgency}"),
             "JBL Quantum 810",
@@ -1138,9 +1138,9 @@ fn show(dry_run: bool) -> Result<bool, String> {
     let process = Command::new("kdialog")
         .args([
             "--title",
-            "JBL Quantum 810",
+            "JanBaLinux SonicCore",
             "--msgbox",
-            &format!("Bateria: {battery}%"),
+            &format!("JBL Quantum 810 Wireless\nBateria: {battery}%"),
         ])
         .status()
         .map_err(|error| format!("could not start kdialog: {error}"))?;
@@ -1151,6 +1151,7 @@ fn show(dry_run: bool) -> Result<bool, String> {
 }
 
 fn usage() {
+    eprintln!("JanBaLinux SonicCore — gaming headset control for Linux");
     eprintln!(
         "usage: openjblquantum <scan|inspect|hid-descriptor|monitor [--dry-run]|daemon|status [--dry-run] [--format json]|probe-status|set <ambient|lighting|color|logo-color|ring-color|sidetone> <value>|notify [--dry-run]|show [--dry-run]|export --format json>"
     );

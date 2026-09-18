@@ -8,11 +8,11 @@
       }
     ],
     "Category": "System Information",
-    "Description": "Shows the JBL Quantum 810 battery level using OpenJBLQuantum",
+    "Description": "Headset status, lighting, and controls for JBL Quantum 810 Wireless",
     "Icon": "audio-headphones",
     "Id": "org.openjblquantum.battery",
     "License": "MIT",
-    "Name": "JBL Quantum 810 Battery",
+    "Name": "JanBaLinux SonicCore",
     "Version": "0.2.0",
     "Website": "https://github.com/dsbarao/OpenJBLQuantumLinux"
   },

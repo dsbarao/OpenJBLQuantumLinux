@@ -260,7 +260,7 @@ PlasmoidItem {
 
     fullRepresentation: ColumnLayout {
         readonly property real requiredGridHeight: root.openSection === "lighting"
-            ? 44 : root.openSection.length > 0 ? 32 : 25
+            ? 46 : root.openSection.length > 0 ? 34 : 27
 
         Layout.minimumWidth: Kirigami.Units.gridUnit * 19
         Layout.minimumHeight: Kirigami.Units.gridUnit * requiredGridHeight
@@ -271,9 +271,16 @@ PlasmoidItem {
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignHCenter
             Layout.maximumHeight: implicitHeight
-            text: "JBL Quantum 810"
+            text: "JanBaLinux SonicCore"
             font.bold: true
             font.pixelSize: Kirigami.Units.gridUnit * 1.05
+        }
+
+        PlasmaComponents.Label {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.maximumHeight: implicitHeight
+            text: "JBL Quantum 810 Wireless"
+            opacity: 0.7
         }
 
         Image {

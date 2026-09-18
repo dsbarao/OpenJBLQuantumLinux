@@ -72,7 +72,7 @@ does not expose a distinct device-side synchronization flag.
 
 ## Linux solid-color control
 
-OpenJBLQuantum applies a color by writing a complete five-segment Solid
+JanBaLinux SonicCore applies a color by writing a complete five-segment Solid
 profile to both Logo and Ring, followed by global lighting enable. It never
 changes one segment in isolation. The CLI accepts only strict `#RRGGBB` values
 or the six compatibility names blue, cyan, magenta, red, green, and white.
@@ -80,6 +80,6 @@ The widget exposes the full range through an HSV wheel and always passes a
 validated six-digit RGB value to the generator.
 
 The widget can target both zones, Logo only, or Ring only. Even for an
-independent change, OpenJBLQuantum reconstructs and sends both complete zone
+independent change, JanBaLinux SonicCore reconstructs and sends both complete zone
 profiles from its confirmed cache. If the other zone is unknown, it refuses
 the operation and requires a synchronized color first rather than guessing.

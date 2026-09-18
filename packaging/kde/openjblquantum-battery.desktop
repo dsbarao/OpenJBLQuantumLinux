@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=JBL Quantum 810 Battery
-Comment=Show the headset battery level
+Name=JanBaLinux SonicCore
+Comment=Show the JBL Quantum 810 Wireless battery level
 Exec=/bin/sh -lc "exec ~/.cargo/bin/openjblquantum show"
 Icon=audio-headphones
 Terminal=false
 StartupNotify=false
 Categories=Utility;
-Keywords=JBL;Quantum;headset;battery;
+Keywords=JanBaLinux;SonicCore;JBL;Quantum;headset;battery;

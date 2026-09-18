@@ -32,7 +32,7 @@ check_prerequisites() {
 
 if [[ "${1:-}" == "--check" ]]; then
     check_prerequisites
-    printf 'Pré-requisitos do OpenJBLQuantum verificados. Nenhuma alteração foi feita.\n'
+    printf 'Pré-requisitos do JanBaLinux SonicCore verificados. Nenhuma alteração foi feita.\n'
     exit 0
 fi
 
@@ -53,6 +53,6 @@ install -Dm644 "$LAUNCHER_SOURCE" "$LAUNCHER_TARGET"
 systemctl --user daemon-reload
 systemctl --user enable --now openjblquantum-state.service
 
-printf '\nOpenJBLQuantum instalado para o usuário atual.\n'
+printf '\nJanBaLinux SonicCore instalado para o usuário atual.\n'
 printf 'O Plasma não foi reiniciado automaticamente.\n'
 printf 'A regra udev privilegiada também não foi alterada. Consulte o README se houver erro de permissão.\n'

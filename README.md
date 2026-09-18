@@ -1,8 +1,19 @@
-# OpenJBLQuantum
+# JanBaLinux SonicCore
 
-Open-source Linux tooling for JBL Quantum headsets, initially focused on the
-JBL Quantum 810 wireless dongle. The project began with safe device detection
-and now includes documented status queries and strictly allowlisted controls.
+Open-source gaming headset control and audio platform for Linux.
+
+**First supported device: JBL Quantum 810 Wireless.**
+
+JanBaLinux SonicCore began with safe device detection and now includes
+HID/USB integration, state monitoring, lighting, and strictly allowlisted
+headset controls. Its independent identity leaves room for additional devices
+and future Linux audio processing, including DSP/PipeWire integration.
+
+> JanBaLinux SonicCore is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Harman International or JBL. JBL, Quantum, and related product names are trademarks of their respective owners.
+
+The CLI is still named `openjblquantum` for installation compatibility. Existing
+commands, service names, widget IDs, and state paths remain valid; see
+[rebranding and compatibility](docs/rebranding.md).
 
 ## Current status
 
@@ -121,8 +132,9 @@ are appended as annotations while the original bytes remain visible.
 `status --dry-run` validates the matched character device without opening it.
 `status` opens hidraw read-only and performs only the allowlisted
 `HIDIOCGFEATURE` read for Report `0x49`, then validates and prints battery
-percentage. Hardware validation returned `49 3c` (60%). The code contains no
-SET_FEATURE or output-report path.
+percentage. Hardware validation returned `49 3c` (60%). The `status` command
+contains no SET_FEATURE or output-report path; confirmed writes are isolated
+in `set`.
 
 `status --format json` performs the same single allowlisted read and emits a
 versioned object suitable for scripts and desktop widgets. It can be combined
@@ -146,7 +158,7 @@ install -Dm644 packaging/kde/openjblquantum-battery.desktop \
   "$HOME/.local/share/applications/openjblquantum-battery.desktop"
 ```
 
-It then appears in the application menu as **JBL Quantum 810 Battery**.
+It then appears in the application menu as **JanBaLinux SonicCore**.
 
 ### Plasma 6 panel widget
 
@@ -195,7 +207,7 @@ kpackagetool6 --type Plasma/Applet --upgrade \
 ```
 
 Then enter Plasma edit mode, choose **Add Widgets**, search for
-**JBL Quantum 810 Battery**, and drag it to the panel. The widget invokes only
+**JanBaLinux SonicCore**, and drag it to the panel. The widget invokes only
 allowlisted `openjblquantum` commands. Its popup includes expandable controls
 for ambient mode (off/ANC/TalkThru), global lighting (on/off), an HSV color
 picker applied together or independently to the complete Logo and Ring
@@ -236,7 +248,8 @@ create a privileged daemon, or grant access to unrelated hidraw devices.
 - `docs/windows-vm-capture.md`: controlled QuantumENGINE/USBPcap workflow;
 - `docs/plan-v0.1.md`: milestone definition;
 - `tools/`: passive host/device inventory utilities;
-- `src/`: future Linux CLI, currently passive sysfs detection only;
+- `src/`: Linux CLI, HID parsing, allowlisted controls, and state service;
+- `docs/rebranding.md`: identity, compatibility decisions, and migration TODOs;
 - `captures/`: local capture staging; capture files are ignored by Git.
 
 ## Confirmed passive mappings
@@ -256,6 +269,33 @@ QuantumENGINE startup returned Feature Report `0x49` with `0x5a` while the
 dongle emitted Input Report `08 5a`. A later controlled lighting capture emitted
 `08 55`, confirming the Input Report payload tracks the changing battery
 percentage (90%, then 85%).
+
+## Platform direction
+
+The following is a conceptual direction, not a list of implemented modules:
+
+```text
+JanBaLinux SonicCore
+├── Device Control
+│   ├── Battery
+│   ├── ANC / TalkThru
+│   ├── Sidetone
+│   └── HID controls
+├── Lighting
+│   └── RGB / effects
+└── Audio
+    ├── Game/Chat Mix
+    ├── Equalizer
+    ├── PipeWire DSP
+    └── Spatial Audio
+```
+
+Device Control and solid RGB lighting already have confirmed implementations
+for the first supported headset. Animation effects are documented research,
+not selectable Linux controls. Game/Chat currently displays the physical dial
+state; software mixing, equalization, PipeWire DSP, and spatial audio remain
+future work. This rebranding adds no device support or audio functionality and
+does not change USB/HID safety boundaries.
 
 ## Scope
 
